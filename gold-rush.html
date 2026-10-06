@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gold Rush | My Online Game</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, sans-serif;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        align-items: center;
+        background:
+          radial-gradient(circle at 50% 0, #48522d, transparent 45%),
+          linear-gradient(#202a26, #0f181b);
+        color: #f9f6e9;
+        display: flex;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+        padding: 24px;
+      }
+
+      main {
+        text-align: center;
+        width: min(100%, 680px);
+      }
+
+      .back-link {
+        color: #d8d6bb;
+        display: inline-block;
+        margin-bottom: 20px;
+        text-decoration: none;
+      }
+
+      .back-link:hover,
+      .back-link:focus-visible {
+        color: #ffdc4b;
+      }
+
+      h1 {
+        color: #ffdc4b;
+        font-size: clamp(2.4rem, 8vw, 4.8rem);
+        letter-spacing: -0.06em;
+        margin: 0;
+        text-shadow: 0 3px 0 #78580b;
+      }
+
+      .intro {
+        color: #d8d6bb;
+        margin: 12px auto 20px;
+      }
+
+      .scores {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, 1fr);
+        margin-bottom: 18px;
+      }
+
+      .score {
+        background: rgba(7, 14, 16, 0.65);
+        border: 2px solid;
+        border-radius: 14px;
+        padding: 12px;
+      }
+
+      .score.player-one {
+        border-color: #f15b6b;
+      }
+
+      .score.player-two {
+        border-color: #58c9e7;
+      }
+
+      .score strong {
+        display: block;
+        font-size: 1.6rem;
+      }
+
+      #status {
+        font-weight: bold;
+        margin: 0 0 18px;
+        min-height: 1.2em;
+      }
+
+      #board {
+        background: #3c3a24;
+        border: 8px solid #795a30;
+        border-radius: 16px;
+        box-shadow: 0 12px 0 #171711;
+        display: grid;
+        gap: 3px;
+        grid-template-columns: repeat(9, 1fr);
+        padding: 5px;
+        width: 100%;
+      }
+
+      .tile {
+        align-items: center;
+        aspect-ratio: 1;
+        background:
+          radial-gradient(circle at 35% 34%, rgba(255, 255, 255, 0.13) 0 4%, transparent 5%),
+          #688044;
+        display: flex;
+        gap: 2px;
+        justify-content: center;
+        min-width: 0;
+      }
+
+      .tile.gold {
+        background:
+          radial-gradient(circle at 50% 50%, #fff3a6 0 16%, #ffdc4b 18% 33%, #a56d08 35% 43%, transparent 45%),
+          #688044;
+      }
+
+      .player {
+        border: 2px solid #fff;
+        border-radius: 50%;
+        height: 34%;
+        min-height: 9px;
+        min-width: 9px;
+        width: 34%;
+      }
+
+      .player-one {
+        background: #f15b6b;
+        box-shadow: 0 0 0 2px #8e2635;
+      }
+
+      .player-two {
+        background: #58c9e7;
+        box-shadow: 0 0 0 2px #167793;
+      }
+
+      #restart {
+        background: #ffdc4b;
+        border: 0;
+        border-radius: 999px;
+        color: #3b2a08;
+        cursor: pointer;
+        font: inherit;
+        font-weight: bold;
+        margin-top: 24px;
+        padding: 13px 24px;
+      }
+
+      #restart:hover,
+      #restart:focus-visible {
+        background: #fff2a8;
+        outline: 3px solid #fff;
+        outline-offset: 3px;
+      }
+
+      kbd {
+        background: #29312b;
+        border: 1px solid #697167;
+        border-radius: 4px;
+        font-family: inherit;
+        padding: 2px 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="index.html">&larr; All games</a>
+      <h1>Gold Rush</h1>
+      <p class="intro">Race to collect 10 gold pieces first.</p>
+      <section class="scores" aria-label="Scores">
+        <div class="score player-one">
+          Player 1 <strong id="score-one">0 gold</strong>
+          <small><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></small>
+        </div>
+        <div class="score player-two">
+          Player 2 <strong id="score-two">0 gold</strong>
+          <small><kbd>&uarr;</kbd> <kbd>&larr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd></small>
+        </div>
+      </section>
+      <p id="status" aria-live="polite">First to 10 gold wins!</p>
+      <div id="board" aria-label="Gold Rush board" role="grid"></div>
+      <button id="restart" type="button">Play again</button>
+    </main>
+
+    <script>
+      const BOARD_SIZE = 9;
+      const WINNING_SCORE = 10;
+      const boardElement = document.querySelector("#board");
+      const scoreOneElement = document.querySelector("#score-one");
+      const scoreTwoElement = document.querySelector("#score-two");
+      const statusElement = document.querySelector("#status");
+      const restartButton = document.querySelector("#restart");
+      const players = [
+        { name: "Player 1", className: "player-one", row: 0, column: 0, score: 0 },
+        { name: "Player 2", className: "player-two", row: 8, column: 8, score: 0 }
+      ];
+      const controls = {
+        w: [0, -1, 0],
+        a: [0, 0, -1],
+        s: [0, 1, 0],
+        d: [0, 0, 1],
+        arrowup: [1, -1, 0],
+        arrowleft: [1, 0, -1],
+        arrowdown: [1, 1, 0],
+        arrowright: [1, 0, 1]
+      };
+      let gold;
+      let gameOver = false;
+
+      function goldPosition() {
+        let row;
+        let column;
+
+        do {
+          row = Math.floor(Math.random() * BOARD_SIZE);
+          column = Math.floor(Math.random() * BOARD_SIZE);
+        } while (players.some((player) => player.row === row && player.column === column));
+
+        return { row, column };
+      }
+
+      function renderGame() {
+        boardElement.replaceChildren();
+
+        for (let row = 0; row < BOARD_SIZE; row += 1) {
+          for (let column = 0; column < BOARD_SIZE; column += 1) {
+            const tile = document.createElement("div");
+            tile.className = "tile";
+            tile.setAttribute("role", "gridcell");
+
+            if (gold.row === row && gold.column === column) {
+              tile.classList.add("gold");
+              tile.setAttribute("aria-label", "Gold");
+            }
+
+            players
+              .filter((player) => player.row === row && player.column === column)
+              .forEach((player) => {
+                const marker = document.createElement("span");
+                marker.className = `player ${player.className}`;
+                marker.setAttribute("aria-label", player.name);
+                tile.append(marker);
+              });
+
+            boardElement.append(tile);
+          }
+        }
+
+        scoreOneElement.textContent = `${players[0].score} gold`;
+        scoreTwoElement.textContent = `${players[1].score} gold`;
+      }
+
+      function movePlayer(playerIndex, rowChange, columnChange) {
+        if (gameOver) {
+          return;
+        }
+
+        const player = players[playerIndex];
+        const nextRow = player.row + rowChange;
+        const nextColumn = player.column + columnChange;
+
+        if (
+          nextRow < 0 || nextRow >= BOARD_SIZE ||
+          nextColumn < 0 || nextColumn >= BOARD_SIZE
+        ) {
+          return;
+        }
+
+        player.row = nextRow;
+        player.column = nextColumn;
+
+        if (player.row === gold.row && player.column === gold.column) {
+          player.score += 1;
+
+          if (player.score === WINNING_SCORE) {
+            gameOver = true;
+            statusElement.textContent = `${player.name} wins the Gold Rush!`;
+          } else {
+            statusElement.textContent = `${player.name} found gold!`;
+            gold = goldPosition();
+          }
+        }
+
+        renderGame();
+      }
+
+      function restartGame() {
+        players[0].row = 0;
+        players[0].column = 0;
+        players[0].score = 0;
+        players[1].row = BOARD_SIZE - 1;
+        players[1].column = BOARD_SIZE - 1;
+        players[1].score = 0;
+        gold = goldPosition();
+        gameOver = false;
+        statusElement.textContent = "First to 10 gold wins!";
+        renderGame();
+      }
+
+      document.addEventListener("keydown", (event) => {
+        const control = controls[event.key.toLowerCase()];
+
+        if (!control) {
+          return;
+        }
+
+        event.preventDefault();
+        movePlayer(...control);
+      });
+
+      restartButton.addEventListener("click", restartGame);
+      restartGame();
+    </script>
+  </body>
+</html>

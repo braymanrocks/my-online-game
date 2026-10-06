@@ -16,18 +16,62 @@
 
       body {
         align-items: center;
-        background: radial-gradient(circle at top, #25437a, #10172b 65%);
+        background:
+          radial-gradient(ellipse at 50% 72%, rgba(137, 194, 140, 0.22), transparent 35%),
+          radial-gradient(circle at 76% 16%, rgba(255, 189, 90, 0.62) 0 3%, transparent 10%),
+          linear-gradient(#71415a 0%, #385766 47%, #0d272b 100%);
         color: #f8fbff;
         display: flex;
         justify-content: center;
         margin: 0;
         min-height: 100vh;
+        overflow: hidden;
         padding: 24px;
+        position: relative;
+      }
+
+      body::before {
+        background:
+          radial-gradient(ellipse at 50% 14%, #fff0a1 0 3%, #ff7548 5%, transparent 16%),
+          linear-gradient(112deg, #9a5648 0 42%, transparent 43%),
+          linear-gradient(248deg, #211a29 0 49%, #4a2a35 50% 100%);
+        bottom: 11%;
+        clip-path: polygon(50% 0, 100% 100%, 0 100%);
+        content: "";
+        height: min(50vw, 410px);
+        left: 50%;
+        position: fixed;
+        transform: translateX(-50%);
+        width: min(78vw, 650px);
+        z-index: 0;
+        filter: drop-shadow(0 24px 22px rgba(0, 0, 0, 0.38));
+      }
+
+      body::after {
+        background: linear-gradient(#123f37, #061a1d);
+        bottom: 0;
+        clip-path: polygon(
+          0 46%, 3% 30%, 6% 46%, 10% 14%, 14% 46%, 19% 24%, 23% 46%,
+          28% 8%, 33% 46%, 39% 20%, 44% 46%, 50% 10%, 56% 46%, 62% 25%,
+          67% 46%, 73% 5%, 78% 46%, 84% 19%, 89% 46%, 94% 11%, 100% 46%,
+          100% 100%, 0 100%
+        );
+        content: "";
+        filter:
+          drop-shadow(0 -48px 0 #1e5344)
+          drop-shadow(0 -96px 0 #34705a);
+        height: 34vh;
+        left: 0;
+        position: fixed;
+        width: 100%;
+        z-index: 1;
       }
 
       main {
+        position: relative;
         text-align: center;
         width: min(100%, 650px);
+        z-index: 2;
       }
 
       .back-link {
@@ -63,18 +107,56 @@
         gap: clamp(4px, 1vw, 8px);
         grid-template-columns: repeat(7, 1fr);
         padding: clamp(7px, 1.8vw, 14px);
+        position: relative;
         width: 100%;
       }
 
+      #board.tied {
+        background: transparent;
+        border-color: transparent;
+        isolation: isolate;
+        overflow: visible;
+      }
+
+      #board.tied::before,
+      #board.tied::after {
+        background: #2361c7;
+        border: 8px solid #18499a;
+        box-sizing: border-box;
+        content: "";
+        inset-block: -8px;
+        position: absolute;
+        width: calc(50% + 8px);
+        z-index: 0;
+      }
+
+      #board.tied::before {
+        animation: board-fall-left 1300ms 100ms cubic-bezier(.55, .05, .85, .35) forwards;
+        border-radius: 18px 0 0 18px;
+        left: -8px;
+      }
+
+      #board.tied::after {
+        animation: board-fall-right 1300ms 100ms cubic-bezier(.55, .05, .85, .35) forwards;
+        border-radius: 0 18px 18px 0;
+        right: -8px;
+      }
+
       .cell {
+        align-items: center;
         aspect-ratio: 1;
         background: #10172b;
         border: 0;
         border-radius: 50%;
         box-shadow: inset 0 5px 0 rgba(0, 0, 0, 0.2);
         cursor: pointer;
+        display: flex;
+        font-size: clamp(1.4rem, 5vw, 3rem);
+        justify-content: center;
+        line-height: 1;
         padding: 0;
         transition: filter 120ms ease, transform 120ms ease;
+        z-index: 1;
       }
 
       .cell:hover:not(:disabled),
@@ -90,15 +172,101 @@
       }
 
       .cell.red {
-        background: #ef3f4e;
+        background: #d92d3b;
       }
 
       .cell.yellow {
-        background: #ffcf3f;
+        background: #f5bc20;
       }
 
       .cell.winner {
         box-shadow: 0 0 0 4px #fff, 0 0 20px #fff;
+      }
+
+      .cell.exploding {
+        animation: explode 700ms ease-out forwards;
+      }
+
+      .cell.crumbling {
+        animation: crumble 700ms ease-in forwards;
+      }
+
+      .cell.falling-left {
+        animation: fall-left 1300ms 100ms cubic-bezier(.55, .05, .85, .35) forwards;
+      }
+
+      .cell.falling-right {
+        animation: fall-right 1300ms 100ms cubic-bezier(.55, .05, .85, .35) forwards;
+      }
+
+      @keyframes explode {
+        45% {
+          box-shadow:
+            0 -22px 0 -7px #f5bc20,
+            18px -12px 0 -7px #f5bc20,
+            20px 14px 0 -7px #f5bc20,
+            -16px 18px 0 -7px #f5bc20,
+            -22px -4px 0 -7px #f5bc20;
+          transform: scale(1.25);
+        }
+
+        100% {
+          opacity: 0;
+          transform: scale(0);
+        }
+      }
+
+      @keyframes crumble {
+        55% {
+          transform: translateY(12px) rotate(-12deg);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translateY(52px) rotate(28deg);
+        }
+      }
+
+      @keyframes board-fall-left {
+        15% {
+          transform: translateX(-18px) rotate(-4deg);
+        }
+
+        100% {
+          transform: translate(-80px, 105vh) rotate(-24deg);
+        }
+      }
+
+      @keyframes board-fall-right {
+        15% {
+          transform: translateX(18px) rotate(4deg);
+        }
+
+        100% {
+          transform: translate(80px, 105vh) rotate(24deg);
+        }
+      }
+
+      @keyframes fall-left {
+        15% {
+          transform: translateX(-18px) rotate(-4deg);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(-80px, 105vh) rotate(-24deg);
+        }
+      }
+
+      @keyframes fall-right {
+        15% {
+          transform: translateX(18px) rotate(4deg);
+        }
+
+        100% {
+          opacity: 0;
+          transform: translate(80px, 105vh) rotate(24deg);
+        }
       }
 
       #restart {
@@ -125,7 +293,7 @@
     <main>
       <a class="back-link" href="index.html">&larr; All games</a>
       <h1>Connect 4</h1>
-      <p id="status" aria-live="polite">Red's turn</p>
+      <p id="status" aria-live="polite">Red T. rex's turn</p>
       <div id="board" aria-label="Connect 4 board" role="grid"></div>
       <button id="restart" type="button">Play again</button>
     </main>
@@ -141,7 +309,11 @@
       let gameOver = false;
 
       function playerName(player) {
-        return player === "red" ? "Red" : "Yellow";
+        return player === "red" ? "Red T. rex" : "Yellow Lizard";
+      }
+
+      function playerToken(player) {
+        return player === "red" ? "🦖" : "🦎";
       }
 
       function renderBoard() {
@@ -153,7 +325,13 @@
             cell.className = `cell${piece ? ` ${piece}` : ""}`;
             cell.type = "button";
             cell.disabled = gameOver || board[0][columnIndex] !== null;
-            cell.setAttribute("aria-label", `Drop ${playerName(currentPlayer)} piece in column ${columnIndex + 1}`);
+            cell.textContent = piece ? playerToken(piece) : "";
+            cell.setAttribute(
+              "aria-label",
+              piece
+                ? `${playerName(piece)} piece at row ${rowIndex + 1}, column ${columnIndex + 1}`
+                : `Drop ${playerName(currentPlayer)} piece in column ${columnIndex + 1}`
+            );
             cell.setAttribute("role", "gridcell");
             cell.addEventListener("click", () => playColumn(columnIndex));
             cell.dataset.row = rowIndex;
@@ -198,6 +376,20 @@
         });
       }
 
+      function defeatPieces(player, effect) {
+        document.querySelectorAll(`.cell.${player}`).forEach((cell) => {
+          cell.classList.add(effect);
+        });
+      }
+
+      function breakBoard() {
+        boardElement.classList.add("tied");
+
+        document.querySelectorAll(".cell").forEach((cell) => {
+          cell.classList.add(Number(cell.dataset.column) < COLUMNS / 2 ? "falling-left" : "falling-right");
+        });
+      }
+
       function playColumn(column) {
         if (gameOver || board[0][column] !== null) {
           return;
@@ -213,6 +405,10 @@
           statusElement.textContent = `${playerName(currentPlayer)} wins!`;
           renderBoard();
           highlightWinner(winningCells);
+          defeatPieces(
+            currentPlayer === "red" ? "yellow" : "red",
+            currentPlayer === "red" ? "exploding" : "crumbling"
+          );
           return;
         }
 
@@ -220,6 +416,7 @@
           gameOver = true;
           statusElement.textContent = "It's a draw!";
           renderBoard();
+          breakBoard();
           return;
         }
 
@@ -232,7 +429,8 @@
         board.forEach((row) => row.fill(null));
         currentPlayer = "red";
         gameOver = false;
-        statusElement.textContent = "Red's turn";
+        boardElement.classList.remove("tied");
+        statusElement.textContent = "Red T. rex's turn";
         renderBoard();
       }
 
