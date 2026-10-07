@@ -8,3 +8,5 @@ any time i ask to create a new game new minigame add a link to the game page
 keep a list of my games here
 
 conect 4
+
+gold rush

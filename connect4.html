@@ -25,7 +25,7 @@
         justify-content: center;
         margin: 0;
         min-height: 100vh;
-        overflow: hidden;
+        overflow-x: hidden;
         padding: 24px;
         position: relative;
       }
@@ -269,7 +269,16 @@
         }
       }
 
-      #restart {
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 28px;
+      }
+
+      #restart,
+      #bot-toggle {
         background: #ffcf3f;
         border: 0;
         border-radius: 999px;
@@ -277,12 +286,13 @@
         cursor: pointer;
         font: inherit;
         font-weight: bold;
-        margin-top: 28px;
         padding: 13px 24px;
       }
 
       #restart:hover,
-      #restart:focus-visible {
+      #restart:focus-visible,
+      #bot-toggle:hover,
+      #bot-toggle:focus-visible {
         background: #fff0a6;
         outline: 3px solid #fff;
         outline-offset: 3px;
@@ -295,7 +305,10 @@
       <h1>Connect 4</h1>
       <p id="status" aria-live="polite">Red T. rex's turn</p>
       <div id="board" aria-label="Connect 4 board" role="grid"></div>
-      <button id="restart" type="button">Play again</button>
+      <div class="actions">
+        <button id="restart" type="button">Play again</button>
+        <button id="bot-toggle" type="button">Play vs bot</button>
+      </div>
     </main>
 
     <script>
@@ -305,7 +318,11 @@
       const boardElement = document.querySelector("#board");
       const statusElement = document.querySelector("#status");
       const restartButton = document.querySelector("#restart");
+      const botToggleButton = document.querySelector("#bot-toggle");
       let currentPlayer = "red";
+      let botEnabled = false;
+      let botTimeout;
+      let botTurn = false;
       let gameOver = false;
 
       function playerName(player) {
@@ -324,7 +341,7 @@
             const cell = document.createElement("button");
             cell.className = `cell${piece ? ` ${piece}` : ""}`;
             cell.type = "button";
-            cell.disabled = gameOver || board[0][columnIndex] !== null;
+            cell.disabled = gameOver || botTurn || (botEnabled && currentPlayer === "yellow") || board[0][columnIndex] !== null;
             cell.textContent = piece ? playerToken(piece) : "";
             cell.setAttribute(
               "aria-label",
@@ -341,7 +358,7 @@
         });
       }
 
-      function findWinningCells(row, column) {
+      function findWinningCells(row, column, player = currentPlayer) {
         const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
 
         for (const [rowDirection, columnDirection] of directions) {
@@ -354,7 +371,7 @@
             while (
               nextRow >= 0 && nextRow < ROWS &&
               nextColumn >= 0 && nextColumn < COLUMNS &&
-              board[nextRow][nextColumn] === currentPlayer
+              board[nextRow][nextColumn] === player
             ) {
               cells.push([nextRow, nextColumn]);
               nextRow += rowDirection * direction;
@@ -390,12 +407,63 @@
         });
       }
 
-      function playColumn(column) {
-        if (gameOver || board[0][column] !== null) {
+      function openRow(column) {
+        return [...board.keys()].reverse().find((rowIndex) => board[rowIndex][column] === null);
+      }
+
+      function wouldWin(column, player) {
+        const row = openRow(column);
+
+        if (row === undefined) {
+          return false;
+        }
+
+        board[row][column] = player;
+        const wins = Boolean(findWinningCells(row, column, player));
+        board[row][column] = null;
+        return wins;
+      }
+
+      function chooseBotColumn() {
+        const availableColumns = [...Array(COLUMNS).keys()].filter((column) => openRow(column) !== undefined);
+
+        return (
+          availableColumns.find((column) => wouldWin(column, "yellow")) ??
+          availableColumns.find((column) => wouldWin(column, "red")) ??
+          availableColumns[Math.floor(Math.random() * availableColumns.length)]
+        );
+      }
+
+      function startBotTurn() {
+        if (!botEnabled || gameOver || currentPlayer !== "yellow") {
           return;
         }
 
-        const row = [...board.keys()].reverse().find((rowIndex) => board[rowIndex][column] === null);
+        botTurn = true;
+        statusElement.textContent = "Yellow Lizard bot is thinking...";
+        renderBoard();
+        botTimeout = window.setTimeout(() => {
+          botTimeout = undefined;
+
+          if (!botEnabled || gameOver || currentPlayer !== "yellow") {
+            return;
+          }
+
+          botTurn = false;
+          playColumn(chooseBotColumn(), true);
+        }, 650);
+      }
+
+      function playColumn(column, isBotMove = false) {
+        if (
+          gameOver ||
+          board[0][column] !== null ||
+          (botEnabled && currentPlayer === "yellow" && !isBotMove)
+        ) {
+          return;
+        }
+
+        const row = openRow(column);
         board[row][column] = currentPlayer;
         renderBoard();
 
@@ -423,17 +491,28 @@
         currentPlayer = currentPlayer === "red" ? "yellow" : "red";
         statusElement.textContent = `${playerName(currentPlayer)}'s turn`;
         renderBoard();
+
+        if (botEnabled && currentPlayer === "yellow") {
+          startBotTurn();
+        }
       }
 
       function restartGame() {
+        window.clearTimeout(botTimeout);
         board.forEach((row) => row.fill(null));
         currentPlayer = "red";
+        botTurn = false;
         gameOver = false;
         boardElement.classList.remove("tied");
         statusElement.textContent = "Red T. rex's turn";
         renderBoard();
       }
 
+      botToggleButton.addEventListener("click", () => {
+        botEnabled = !botEnabled;
+        botToggleButton.textContent = botEnabled ? "Play 2 players" : "Play vs bot";
+        restartGame();
+      });
       restartButton.addEventListener("click", restartGame);
       renderBoard();
     </script>
