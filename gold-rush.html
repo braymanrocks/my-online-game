@@ -29,7 +29,7 @@
 
       main {
         text-align: center;
-        width: min(100%, 680px);
+        width: min(100%, 560px);
       }
 
       .back-link {
@@ -121,22 +121,58 @@
       }
 
       .player {
-        border: 2px solid #fff;
+        --hat: linear-gradient(#363c40 0 0) 50% 5% / 92% 25% no-repeat;
+        height: 82%;
+        min-height: 21px;
+        min-width: 18px;
+        position: relative;
+        width: 58%;
+      }
+
+      .player::before {
+        background:
+          var(--hat),
+          radial-gradient(circle at 34% 42%, #38271f 0 7%, transparent 8%),
+          radial-gradient(circle at 66% 42%, #38271f 0 7%, transparent 8%),
+          radial-gradient(ellipse at 50% 0, transparent 0 42%, #a8414e 44% 54%, transparent 56%) 50% 76% / 45% 20% no-repeat,
+          #f3bf91;
+        border: 1px solid #75442f;
         border-radius: 50%;
-        height: 34%;
-        min-height: 9px;
-        min-width: 9px;
-        width: 34%;
+        content: "";
+        height: 46%;
+        left: 50%;
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        width: 46%;
+      }
+
+      .player::after {
+        background: var(--shirt-color);
+        border: 1px solid var(--shirt-shadow);
+        border-radius: 45% 45% 18% 18%;
+        bottom: 0;
+        content: "";
+        height: 54%;
+        left: 12%;
+        position: absolute;
+        width: 76%;
       }
 
       .player-one {
-        background: #f15b6b;
-        box-shadow: 0 0 0 2px #8e2635;
+        --hat:
+          linear-gradient(#c93748 0 0) 50% 5% / 92% 25% no-repeat,
+          linear-gradient(#8e2635 0 0) 78% 29% / 44% 9% no-repeat;
+        --shirt-color: #f15b6b;
+        --shirt-shadow: #8e2635;
       }
 
       .player-two {
-        background: #58c9e7;
-        box-shadow: 0 0 0 2px #167793;
+        --hat:
+          linear-gradient(#2998b9 0 0) 50% 5% / 92% 25% no-repeat,
+          linear-gradient(#167793 0 0) 78% 29% / 44% 9% no-repeat;
+        --shirt-color: #58c9e7;
+        --shirt-shadow: #167793;
       }
 
       #restart {
@@ -171,7 +207,7 @@
     <main>
       <a class="back-link" href="index.html">&larr; All games</a>
       <h1>Gold Rush</h1>
-      <p class="intro">Race to collect 10 gold pieces first.</p>
+      <p class="intro">Race to collect 10 gold pieces first. Hold a movement key to keep moving.</p>
       <section class="scores" aria-label="Scores">
         <div class="score player-one">
           Player 1 <strong id="score-one">0 gold</strong>
@@ -189,6 +225,7 @@
 
     <script>
       const BOARD_SIZE = 9;
+      const MOVE_INTERVAL = 125;
       const WINNING_SCORE = 10;
       const boardElement = document.querySelector("#board");
       const scoreOneElement = document.querySelector("#score-one");
@@ -209,6 +246,7 @@
         arrowdown: [1, 1, 0],
         arrowright: [1, 0, 1]
       };
+      const heldControls = new Map();
       let gold;
       let gameOver = false;
 
@@ -279,6 +317,7 @@
 
           if (player.score === WINNING_SCORE) {
             gameOver = true;
+            heldControls.clear();
             statusElement.textContent = `${player.name} wins the Gold Rush!`;
           } else {
             statusElement.textContent = `${player.name} found gold!`;
@@ -296,6 +335,7 @@
         players[1].row = BOARD_SIZE - 1;
         players[1].column = BOARD_SIZE - 1;
         players[1].score = 0;
+        heldControls.clear();
         gold = goldPosition();
         gameOver = false;
         statusElement.textContent = "First to 10 gold wins!";
@@ -303,15 +343,34 @@
       }
 
       document.addEventListener("keydown", (event) => {
-        const control = controls[event.key.toLowerCase()];
+        const key = event.key.toLowerCase();
+        const control = controls[key];
 
         if (!control) {
           return;
         }
 
         event.preventDefault();
-        movePlayer(...control);
+
+        if (!heldControls.has(key)) {
+          heldControls.set(key, control);
+          movePlayer(...control);
+        }
       });
+
+      document.addEventListener("keyup", (event) => {
+        const key = event.key.toLowerCase();
+
+        if (heldControls.has(key)) {
+          event.preventDefault();
+          heldControls.delete(key);
+        }
+      });
+
+      window.addEventListener("blur", () => heldControls.clear());
+      window.setInterval(() => {
+        heldControls.forEach((control) => movePlayer(...control));
+      }, MOVE_INTERVAL);
 
       restartButton.addEventListener("click", restartGame);
       restartGame();
