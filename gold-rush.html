@@ -159,6 +159,45 @@
         transform: rotate(-20deg);
       }
 
+      .tile.shield {
+        position: relative;
+      }
+
+      .tile.shield::before {
+        color: #8fe7ff;
+        content: "\1F6E1";
+        font-size: clamp(1rem, 4vw, 2.2rem);
+        line-height: 1;
+        position: absolute;
+        text-shadow: 1px 2px 0 #1a5870;
+      }
+
+      .bomb {
+        background: radial-gradient(circle at 35% 30%, #8c8c8c 0 8%, transparent 9%), #252525;
+        border: 2px solid #101010;
+        border-radius: 50%;
+        height: 42%;
+        min-height: 12px;
+        min-width: 12px;
+        position: relative;
+        width: 42%;
+      }
+
+      .bomb::after {
+        background: #f15b6b;
+        border-radius: 50%;
+        content: "";
+        height: 22%;
+        position: absolute;
+        right: -18%;
+        top: -18%;
+        width: 22%;
+      }
+
+      .bomb.player-two-bomb::after {
+        background: #58c9e7;
+      }
+
       .player {
         --hat: linear-gradient(#363c40 0 0) 50% 5% / 92% 25% no-repeat;
         height: 82%;
@@ -216,6 +255,10 @@
 
       .player.armed {
         filter: drop-shadow(0 0 4px #ffdc4b);
+      }
+
+      .player.protected {
+        filter: drop-shadow(0 0 4px #8fe7ff);
       }
 
       .player.frozen {
@@ -278,11 +321,13 @@
         <section class="scores" aria-label="Scores">
           <div class="score player-one">
             Player 1 <strong id="score-one">0 gold</strong>
-            <small><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd></small>
+            <small><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move &middot; <kbd>Left Shift</kbd> bomb</small>
+            <small id="bombs-one">10 bombs</small>
           </div>
           <div class="score player-two">
             <span id="player-two-label">Player 2</span> <strong id="score-two">0 gold</strong>
-            <small id="player-two-controls"><kbd>&uarr;</kbd> <kbd>&larr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd></small>
+            <small id="player-two-controls"><kbd>&uarr;</kbd> <kbd>&larr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> move &middot; <kbd>Right Shift</kbd> bomb</small>
+            <small id="bombs-two">10 bombs</small>
           </div>
         </section>
         <div id="board" aria-label="Gold Rush board" role="grid"></div>
@@ -299,11 +344,15 @@
       const BOT_MOVE_INTERVAL = 300;
       const FREEZE_DURATION = 5000;
       const MOVE_INTERVAL = 125;
+      const SHIELD_DURATION = 10000;
+      const SHIELD_SPAWN_INTERVAL = 20000;
       const SWORD_DURATION = 5000;
       const WINNING_SCORE = 10;
       const boardElement = document.querySelector("#board");
       const scoreOneElement = document.querySelector("#score-one");
       const scoreTwoElement = document.querySelector("#score-two");
+      const bombsOneElement = document.querySelector("#bombs-one");
+      const bombsTwoElement = document.querySelector("#bombs-two");
       const playerTwoLabelElement = document.querySelector("#player-two-label");
       const playerTwoControlsElement = document.querySelector("#player-two-controls");
       const statusElement = document.querySelector("#status");
@@ -311,8 +360,8 @@
       const restartButton = document.querySelector("#restart");
       const botToggleButton = document.querySelector("#bot-toggle");
       const players = [
-        { name: "Player 1", className: "player-one", row: 0, column: 0, score: 0, frozenUntil: 0 },
-        { name: "Player 2", className: "player-two", row: 8, column: 8, score: 0, frozenUntil: 0 }
+        { name: "Player 1", className: "player-one", row: 0, column: 0, score: 0, bombs: 10, frozenUntil: 0, shieldUntil: 0 },
+        { name: "Player 2", className: "player-two", row: 8, column: 8, score: 0, bombs: 10, frozenUntil: 0, shieldUntil: 0 }
       ];
       const controls = {
         w: [0, -1, 0],
@@ -326,7 +375,10 @@
       };
       const heldControls = new Map();
       let gold;
+      let bombs;
       let gameOver = false;
+      let shield;
+      let shieldNextSpawnAt = 0;
       let sword;
       let swordExpiresAt = 0;
       let swordOwner = null;
@@ -346,7 +398,9 @@
           column = Math.floor(Math.random() * BOARD_SIZE);
         } while (
           players.some((player) => player.row === row && player.column === column) ||
-          (sword && sword.row === row && sword.column === column)
+          (sword && sword.row === row && sword.column === column) ||
+          (shield && shield.row === row && shield.column === column) ||
+          bombs.some((bomb) => bomb.row === row && bomb.column === column)
         );
 
         return { row, column };
@@ -361,7 +415,26 @@
           column = Math.floor(Math.random() * BOARD_SIZE);
         } while (
           players.some((player) => player.row === row && player.column === column) ||
-          (gold && gold.row === row && gold.column === column)
+          (gold && gold.row === row && gold.column === column) ||
+          (shield && shield.row === row && shield.column === column) ||
+          bombs.some((bomb) => bomb.row === row && bomb.column === column)
+        );
+
+        return { row, column };
+      }
+
+      function shieldPosition() {
+        let row;
+        let column;
+
+        do {
+          row = Math.floor(Math.random() * BOARD_SIZE);
+          column = Math.floor(Math.random() * BOARD_SIZE);
+        } while (
+          players.some((player) => player.row === row && player.column === column) ||
+          (gold && gold.row === row && gold.column === column) ||
+          (sword && sword.row === row && sword.column === column) ||
+          bombs.some((bomb) => bomb.row === row && bomb.column === column)
         );
 
         return { row, column };
@@ -376,6 +449,10 @@
         }
 
         players.forEach((player, playerIndex) => {
+          if (player.shieldUntil > now) {
+            effects.push(`${playerLabel(playerIndex)} is shielded for ${Math.ceil((player.shieldUntil - now) / 1000)} seconds.`);
+          }
+
           if (player.frozenUntil > now) {
             effects.push(`${playerLabel(playerIndex)} is frozen for ${Math.ceil((player.frozenUntil - now) / 1000)} seconds.`);
           }
@@ -403,10 +480,24 @@
               tile.setAttribute("aria-label", "Sword");
             }
 
+            if (shield && shield.row === row && shield.column === column) {
+              tile.classList.add("shield");
+              tile.setAttribute("aria-label", "Shield");
+            }
+
+            bombs.forEach((bomb) => {
+              if (bomb.row === row && bomb.column === column) {
+                const marker = document.createElement("span");
+                marker.className = `bomb ${bomb.owner === 1 ? "player-two-bomb" : ""}`;
+                marker.setAttribute("aria-label", `${playerLabel(bomb.owner)} bomb`);
+                tile.append(marker);
+              }
+            });
+
             players.forEach((player, playerIndex) => {
               if (player.row === row && player.column === column) {
                 const marker = document.createElement("span");
-                marker.className = `player ${player.className}${swordOwner === playerIndex ? " armed" : ""}${player.frozenUntil > Date.now() ? " frozen" : ""}`;
+                marker.className = `player ${player.className}${swordOwner === playerIndex ? " armed" : ""}${player.shieldUntil > Date.now() ? " protected" : ""}${player.frozenUntil > Date.now() ? " frozen" : ""}`;
                 marker.setAttribute("aria-label", playerLabel(playerIndex));
                 tile.append(marker);
               }
@@ -418,7 +509,31 @@
 
         scoreOneElement.textContent = `${players[0].score} gold`;
         scoreTwoElement.textContent = `${players[1].score} gold`;
+        bombsOneElement.textContent = `${players[0].bombs} bombs`;
+        bombsTwoElement.textContent = `${players[1].bombs} bombs`;
         updatePowerStatus();
+      }
+
+      function placeBomb(playerIndex) {
+        if (gameOver || (botEnabled && playerIndex === 1)) {
+          return;
+        }
+
+        const player = players[playerIndex];
+        if (player.frozenUntil > Date.now()) {
+          statusElement.textContent = `${playerLabel(playerIndex)} is frozen and cannot place a bomb yet.`;
+          return;
+        }
+
+        if (player.bombs === 0) {
+          statusElement.textContent = `${playerLabel(playerIndex)} has no bombs left.`;
+          return;
+        }
+
+        bombs.push({ owner: playerIndex, row: player.row, column: player.column });
+        player.bombs -= 1;
+        statusElement.textContent = `${playerLabel(playerIndex)} placed a bomb!`;
+        renderGame();
       }
 
       function movePlayer(playerIndex, rowChange, columnChange, isBotMove = false) {
@@ -447,6 +562,29 @@
 
         player.row = nextRow;
         player.column = nextColumn;
+
+        const bombIndex = bombs.findIndex((bomb) =>
+          bomb.owner !== playerIndex &&
+          bomb.row === player.row &&
+          bomb.column === player.column
+        );
+        if (bombIndex !== -1) {
+          bombs.splice(bombIndex, 1);
+          if (player.shieldUntil > now) {
+            statusElement.textContent = `${playerLabel(playerIndex)}'s shield blocked the bomb!`;
+          } else {
+            player.frozenUntil = now + FREEZE_DURATION;
+            statusElement.textContent = `${playerLabel(playerIndex)} stepped on a bomb and is frozen for 5 seconds!`;
+          }
+          renderGame();
+          return;
+        }
+
+        if (shield && player.row === shield.row && player.column === shield.column) {
+          player.shieldUntil = now + SHIELD_DURATION;
+          shield = null;
+          statusElement.textContent = `${playerLabel(playerIndex)} picked up a shield for 10 seconds!`;
+        }
 
         if (sword && player.row === sword.row && player.column === sword.column) {
           swordOwner = playerIndex;
@@ -477,8 +615,12 @@
           player.row === otherPlayer.row &&
           player.column === otherPlayer.column
         ) {
-          otherPlayer.frozenUntil = now + FREEZE_DURATION;
-          statusElement.textContent = `${playerLabel(otherPlayerIndex)} is frozen for 5 seconds!`;
+          if (otherPlayer.shieldUntil > now) {
+            statusElement.textContent = `${playerLabel(otherPlayerIndex)}'s shield blocked the sword!`;
+          } else {
+            otherPlayer.frozenUntil = now + FREEZE_DURATION;
+            statusElement.textContent = `${playerLabel(otherPlayerIndex)} is frozen for 5 seconds!`;
+          }
         }
 
         renderGame();
@@ -497,12 +639,25 @@
         }
 
         players.forEach((player, playerIndex) => {
+          if (player.shieldUntil && now >= player.shieldUntil) {
+            player.shieldUntil = 0;
+            statusElement.textContent = `${playerLabel(playerIndex)}'s shield wore off!`;
+            needsRender = true;
+          }
+
           if (player.frozenUntil && now >= player.frozenUntil) {
             player.frozenUntil = 0;
             statusElement.textContent = `${playerLabel(playerIndex)} can move again!`;
             needsRender = true;
           }
         });
+
+        if (!shield && now >= shieldNextSpawnAt) {
+          shield = shieldPosition();
+          shieldNextSpawnAt = now + SHIELD_SPAWN_INTERVAL;
+          statusElement.textContent = "A shield has appeared on the board!";
+          needsRender = true;
+        }
 
         updatePowerStatus();
 
@@ -515,14 +670,21 @@
         players[0].row = 0;
         players[0].column = 0;
         players[0].score = 0;
+        players[0].bombs = 10;
         players[0].frozenUntil = 0;
+        players[0].shieldUntil = 0;
         players[1].row = BOARD_SIZE - 1;
         players[1].column = BOARD_SIZE - 1;
         players[1].score = 0;
+        players[1].bombs = 10;
         players[1].frozenUntil = 0;
+        players[1].shieldUntil = 0;
         heldControls.clear();
+        bombs = [];
         gold = goldPosition();
         sword = swordPosition();
+        shield = null;
+        shieldNextSpawnAt = Date.now() + SHIELD_SPAWN_INTERVAL;
         swordOwner = null;
         swordExpiresAt = 0;
         lastBotMove = 0;
@@ -562,13 +724,31 @@
 
       function updateMatchMode() {
         playerTwoLabelElement.textContent = botEnabled ? "Bot" : "Player 2";
-        playerTwoControlsElement.textContent = botEnabled ? "Moves automatically" : "↑ ← ↓ →";
+        playerTwoControlsElement.textContent = botEnabled ? "Moves automatically" : "↑ ← ↓ → move · Right Shift bomb";
         botToggleButton.textContent = botEnabled ? "Play 2 players" : "Play vs bot";
       }
 
       document.addEventListener("keydown", (event) => {
         const key = event.key.toLowerCase();
         const control = controls[key];
+
+        if (event.code === "ShiftLeft") {
+          event.preventDefault();
+          if (event.repeat) {
+            return;
+          }
+          placeBomb(0);
+          return;
+        }
+
+        if (event.code === "ShiftRight") {
+          event.preventDefault();
+          if (event.repeat) {
+            return;
+          }
+          placeBomb(1);
+          return;
+        }
 
         if (!control) {
           return;

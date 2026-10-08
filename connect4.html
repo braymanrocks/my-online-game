@@ -424,13 +424,120 @@
         return wins;
       }
 
+      function availableColumns() {
+        return [...Array(COLUMNS).keys()].filter((column) => openRow(column) !== undefined);
+      }
+
+      function scorePosition(player) {
+        const opponent = player === "yellow" ? "red" : "yellow";
+        let score = 0;
+
+        board.forEach((row) => {
+          if (row[Math.floor(COLUMNS / 2)] === player) {
+            score += 6;
+          }
+        });
+
+        const scoreWindow = (window) => {
+          const playerPieces = window.filter((piece) => piece === player).length;
+          const opponentPieces = window.filter((piece) => piece === opponent).length;
+          const emptySpaces = window.filter((piece) => piece === null).length;
+
+          if (playerPieces === 4) return 100000;
+          if (playerPieces === 3 && emptySpaces === 1) return 120;
+          if (playerPieces === 2 && emptySpaces === 2) return 12;
+          if (opponentPieces === 3 && emptySpaces === 1) return -140;
+          if (opponentPieces === 2 && emptySpaces === 2) return -10;
+          return 0;
+        };
+
+        for (let row = 0; row < ROWS; row += 1) {
+          for (let column = 0; column <= COLUMNS - 4; column += 1) {
+            score += scoreWindow(board[row].slice(column, column + 4));
+          }
+        }
+
+        for (let column = 0; column < COLUMNS; column += 1) {
+          for (let row = 0; row <= ROWS - 4; row += 1) {
+            score += scoreWindow([0, 1, 2, 3].map((offset) => board[row + offset][column]));
+          }
+        }
+
+        for (let row = 0; row <= ROWS - 4; row += 1) {
+          for (let column = 0; column <= COLUMNS - 4; column += 1) {
+            score += scoreWindow([0, 1, 2, 3].map((offset) => board[row + offset][column + offset]));
+            score += scoreWindow([0, 1, 2, 3].map((offset) => board[row + 3 - offset][column + offset]));
+          }
+        }
+
+        return score;
+      }
+
+      function minimax(depth, alpha, beta, maximizingPlayer) {
+        const player = maximizingPlayer ? "yellow" : "red";
+        const columns = availableColumns();
+
+        if (depth === 0 || columns.length === 0) {
+          return scorePosition("yellow");
+        }
+
+        if (maximizingPlayer) {
+          let bestScore = -Infinity;
+
+          for (const column of columns) {
+            const row = openRow(column);
+            board[row][column] = player;
+            const score = findWinningCells(row, column, player)
+              ? 100000 + depth
+              : minimax(depth - 1, alpha, beta, false);
+            board[row][column] = null;
+            bestScore = Math.max(bestScore, score);
+            alpha = Math.max(alpha, bestScore);
+
+            if (alpha >= beta) break;
+          }
+
+          return bestScore;
+        }
+
+        let bestScore = Infinity;
+
+        for (const column of columns) {
+          const row = openRow(column);
+          board[row][column] = player;
+          const score = findWinningCells(row, column, player)
+            ? -100000 - depth
+            : minimax(depth - 1, alpha, beta, true);
+          board[row][column] = null;
+          bestScore = Math.min(bestScore, score);
+          beta = Math.min(beta, bestScore);
+
+          if (alpha >= beta) break;
+        }
+
+        return bestScore;
+      }
+
       function chooseBotColumn() {
-        const availableColumns = [...Array(COLUMNS).keys()].filter((column) => openRow(column) !== undefined);
+        const columns = availableColumns();
+        const orderedColumns = columns.sort((first, second) =>
+          Math.abs(first - Math.floor(COLUMNS / 2)) - Math.abs(second - Math.floor(COLUMNS / 2))
+        );
 
         return (
-          availableColumns.find((column) => wouldWin(column, "yellow")) ??
-          availableColumns.find((column) => wouldWin(column, "red")) ??
-          availableColumns[Math.floor(Math.random() * availableColumns.length)]
+          orderedColumns.find((column) => wouldWin(column, "yellow")) ??
+          orderedColumns.find((column) => wouldWin(column, "red")) ??
+          orderedColumns.reduce(
+            (bestMove, column) => {
+              const row = openRow(column);
+              board[row][column] = "yellow";
+              const score = minimax(4, -Infinity, Infinity, false);
+              board[row][column] = null;
+
+              return score > bestMove.score ? { column, score } : bestMove;
+            },
+            { column: orderedColumns[0], score: -Infinity }
+          ).column
         );
       }
 
