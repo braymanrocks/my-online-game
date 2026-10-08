@@ -314,7 +314,7 @@
     <main>
       <a class="back-link" href="index.html">&larr; All games</a>
       <h1>Gold Rush</h1>
-      <p class="intro">Race to collect 10 gold pieces first. Hold a movement key to keep moving.</p>
+      <p class="intro">Race to collect 10 gold pieces first. Press a movement key once to move one tile, or hold it to keep moving.</p>
       <p id="status" aria-live="polite">First to 10 gold wins!</p>
       <p id="power-status" aria-live="polite"></p>
       <div class="game-area">
@@ -340,9 +340,11 @@
 
     <script>
       const BOARD_SIZE = 9;
+      const BOT_BOMB_INTERVAL = 5000;
       const EFFECT_INTERVAL = 100;
       const BOT_MOVE_INTERVAL = 300;
       const FREEZE_DURATION = 5000;
+      const HOLD_MOVE_DELAY = 300;
       const MOVE_INTERVAL = 125;
       const SHIELD_DURATION = 10000;
       const SHIELD_SPAWN_INTERVAL = 20000;
@@ -383,6 +385,7 @@
       let swordExpiresAt = 0;
       let swordOwner = null;
       let botEnabled = false;
+      let lastBotBomb = 0;
       let lastBotMove = 0;
 
       function playerLabel(playerIndex) {
@@ -398,6 +401,24 @@
           column = Math.floor(Math.random() * BOARD_SIZE);
         } while (
           players.some((player) => player.row === row && player.column === column) ||
+          (sword && sword.row === row && sword.column === column) ||
+          (shield && shield.row === row && shield.column === column) ||
+          bombs.some((bomb) => bomb.row === row && bomb.column === column)
+        );
+
+        return { row, column };
+      }
+
+      function bombPosition() {
+        let row;
+        let column;
+
+        do {
+          row = Math.floor(Math.random() * BOARD_SIZE);
+          column = Math.floor(Math.random() * BOARD_SIZE);
+        } while (
+          players.some((player) => player.row === row && player.column === column) ||
+          (gold && gold.row === row && gold.column === column) ||
           (sword && sword.row === row && sword.column === column) ||
           (shield && shield.row === row && shield.column === column) ||
           bombs.some((bomb) => bomb.row === row && bomb.column === column)
@@ -514,8 +535,8 @@
         updatePowerStatus();
       }
 
-      function placeBomb(playerIndex) {
-        if (gameOver || (botEnabled && playerIndex === 1)) {
+      function placeBomb(playerIndex, position = players[playerIndex], isBotPlacement = false) {
+        if (gameOver || (botEnabled && playerIndex === 1 && !isBotPlacement)) {
           return;
         }
 
@@ -530,7 +551,7 @@
           return;
         }
 
-        bombs.push({ owner: playerIndex, row: player.row, column: player.column });
+        bombs.push({ owner: playerIndex, row: position.row, column: position.column });
         player.bombs -= 1;
         statusElement.textContent = `${playerLabel(playerIndex)} placed a bomb!`;
         renderGame();
@@ -687,6 +708,7 @@
         shieldNextSpawnAt = Date.now() + SHIELD_SPAWN_INTERVAL;
         swordOwner = null;
         swordExpiresAt = 0;
+        lastBotBomb = Date.now();
         lastBotMove = 0;
         gameOver = false;
         statusElement.textContent = "First to 10 gold wins!";
@@ -720,6 +742,16 @@
         } else if (columnDistance !== 0) {
           movePlayer(1, 0, Math.sign(columnDistance), true);
         }
+      }
+
+      function placeBotBomb() {
+        const bot = players[1];
+
+        if (!botEnabled || gameOver || bot.frozenUntil > Date.now() || bot.bombs === 0) {
+          return;
+        }
+
+        placeBomb(1, bombPosition(), true);
       }
 
       function updateMatchMode() {
@@ -761,7 +793,7 @@
         }
 
         if (!heldControls.has(key)) {
-          heldControls.set(key, control);
+          heldControls.set(key, { control, repeatAt: Date.now() + HOLD_MOVE_DELAY });
           movePlayer(...control);
         }
       });
@@ -777,11 +809,21 @@
 
       window.addEventListener("blur", () => heldControls.clear());
       window.setInterval(() => {
-        heldControls.forEach((control) => movePlayer(...control));
+        const now = Date.now();
+        heldControls.forEach(({ control, repeatAt }) => {
+          if (now >= repeatAt) {
+            movePlayer(...control);
+          }
+        });
 
-        if (botEnabled && Date.now() - lastBotMove >= BOT_MOVE_INTERVAL) {
-          lastBotMove = Date.now();
+        if (botEnabled && now - lastBotMove >= BOT_MOVE_INTERVAL) {
+          lastBotMove = now;
           moveBot();
+        }
+
+        if (botEnabled && now - lastBotBomb >= BOT_BOMB_INTERVAL) {
+          lastBotBomb = now;
+          placeBotBomb();
         }
       }, MOVE_INTERVAL);
       window.setInterval(updateTimedEffects, EFFECT_INTERVAL);

@@ -10,3 +10,5 @@ keep a list of my games here
 conect 4
 
 gold rush
+
+africa conquest

@@ -1,0 +1,282 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Africa Conquest | My Online Game</title>
+    <style>
+      :root { color-scheme: dark; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { background: radial-gradient(circle at 50% 0, #c99336, transparent 34%), linear-gradient(#1d342c, #071315); color: #f7f0d8; margin: 0; min-height: 100vh; padding: 24px; }
+      main { margin: 0 auto; max-width: 1180px; }
+      .back-link { color: #f5d77a; display: inline-block; margin-bottom: 14px; text-decoration: none; }
+      .back-link:hover, .back-link:focus-visible { color: #fff4c7; }
+      h1 { color: #ffd45d; font-size: clamp(2.3rem, 6vw, 4.3rem); letter-spacing: -.06em; margin: 0; text-shadow: 0 3px #70501b; }
+      .intro { color: #e2d5aa; margin: 8px 0 18px; }
+      .layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 290px; }
+      #map { background: rgba(8, 25, 23, .76); border: 5px solid #796039; border-radius: 18px 18px 42% 42%; display: grid; gap: 7px; grid-template-columns: repeat(6, 1fr); padding: 16px; }
+      .territory { align-items: center; background: #435f43; border: 2px solid #789168; border-radius: 10px; color: #fff; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: clamp(.63rem, 1.5vw, .9rem); justify-content: center; min-height: 58px; padding: 4px; text-align: center; transition: filter 120ms ease, transform 120ms ease; }
+      .territory:hover, .territory:focus-visible { filter: brightness(1.2); outline: 3px solid #ffe17c; outline-offset: 2px; transform: translateY(-2px); }
+      .territory.blue { background: #286da5; border-color: #78caff; }
+      .territory.red { background: #a6403e; border-color: #ff9389; }
+      .territory.selected { box-shadow: 0 0 0 3px #ffe17c, 0 0 18px #ffe17c; }
+      .army { color: #fff6bc; font-size: 1.2em; font-weight: bold; }
+      .panel { background: rgba(9, 24, 24, .82); border: 2px solid #796039; border-radius: 16px; padding: 18px; }
+      .panel h2 { color: #ffd45d; font-size: 1.25rem; margin: 0 0 10px; }
+      #status { line-height: 1.45; margin: 0 0 14px; min-height: 3em; }
+      .turn { border-radius: 8px; font-weight: bold; padding: 10px; }
+      .turn.blue { background: #1b527e; }
+      .turn.red { background: #792d31; }
+      .stats { display: grid; gap: 8px; margin: 14px 0; }
+      .stats div { background: #182a27; border-radius: 8px; padding: 8px; }
+      .actions { display: grid; gap: 8px; }
+      button, select { font: inherit; }
+      .actions button, #mode-toggle, #restart { background: #ffd45d; border: 0; border-radius: 8px; color: #392609; cursor: pointer; font-weight: bold; padding: 11px; }
+      .actions button:hover:not(:disabled), .actions button:focus-visible:not(:disabled), #mode-toggle:hover, #restart:hover { background: #fff0a8; outline: 3px solid #fff; outline-offset: 2px; }
+      .actions button:disabled { cursor: not-allowed; opacity: .45; }
+      select { background: #182a27; border: 1px solid #a58d55; border-radius: 7px; color: #fff; padding: 9px; }
+      .rules { color: #d8d0b4; font-size: .88rem; line-height: 1.4; }
+      .footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+      @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } #map { gap: 4px; padding: 9px; } .territory { min-height: 50px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back-link" href="index.html">&larr; All games</a>
+      <h1>Africa Conquest</h1>
+      <p class="intro">A two-player, Risk-style battle for 30 African territories.</p>
+      <div class="layout">
+        <section id="map" aria-label="Africa territory map"></section>
+        <aside class="panel">
+          <h2 id="turn-title" class="turn blue">Blue player's turn</h2>
+          <p id="status" aria-live="polite">Deploy your reinforcements by selecting one of your territories.</p>
+          <div class="stats">
+            <div>Phase: <strong id="phase">Deploy</strong></div>
+            <div>Reinforcements: <strong id="reinforcements">0</strong></div>
+            <div>Blue territories: <strong id="blue-count">0</strong></div>
+            <div>Red territories: <strong id="red-count">0</strong></div>
+          </div>
+          <div class="actions">
+            <select id="attack-dice" aria-label="Attack dice">
+              <option value="1">Attack with 1 die</option>
+              <option value="2">Attack with 2 dice</option>
+              <option value="3" selected>Attack with 3 dice</option>
+            </select>
+            <button id="attack" type="button">Attack selected enemy</button>
+            <button id="fortify" type="button">Fortify selected territory</button>
+            <button id="end-phase" type="button">Finish deployment</button>
+          </div>
+          <p class="rules"><strong>How to play:</strong> Click one of your territories, then an adjacent enemy to select an attack. During fortify, select two adjacent territories you own to move one army. The attacker needs at least two armies.</p>
+        </aside>
+      </div>
+      <div class="footer-actions">
+        <button id="restart" type="button">New game</button>
+        <button id="mode-toggle" type="button">Play vs bot</button>
+      </div>
+    </main>
+    <script>
+      const territories = [
+        ["Morocco", ["Algeria", "Mauritania"]], ["Algeria", ["Morocco", "Tunisia", "Libya", "Mali", "Niger"]],
+        ["Tunisia", ["Algeria", "Libya"]], ["Libya", ["Tunisia", "Algeria", "Niger", "Chad", "Sudan", "Egypt"]],
+        ["Egypt", ["Libya", "Sudan"]], ["Mauritania", ["Morocco", "Mali", "Senegal"]],
+        ["Mali", ["Mauritania", "Algeria", "Niger", "Burkina Faso", "Guinea", "Senegal"]], ["Niger", ["Algeria", "Libya", "Chad", "Nigeria", "Benin", "Burkina Faso", "Mali"]],
+        ["Chad", ["Libya", "Sudan", "Central African Republic", "Cameroon", "Nigeria", "Niger"]], ["Sudan", ["Egypt", "Libya", "Chad", "Central African Republic", "Ethiopia"]],
+        ["Senegal", ["Mauritania", "Mali", "Guinea"]], ["Guinea", ["Senegal", "Mali", "Sierra Leone", "Cote d'Ivoire"]],
+        ["Ghana", ["Cote d'Ivoire", "Burkina Faso", "Togo", "Benin"]], ["Nigeria", ["Niger", "Chad", "Cameroon", "Benin"]],
+        ["Cameroon", ["Nigeria", "Chad", "Central African Republic", "DR Congo"]], ["Sierra Leone", ["Guinea", "Cote d'Ivoire"]],
+        ["Cote d'Ivoire", ["Guinea", "Sierra Leone", "Ghana", "Burkina Faso"]], ["Burkina Faso", ["Mali", "Niger", "Benin", "Ghana", "Cote d'Ivoire"]],
+        ["Benin", ["Niger", "Nigeria", "Burkina Faso", "Ghana"]], ["Central African Republic", ["Chad", "Sudan", "Cameroon", "DR Congo"]],
+        ["DR Congo", ["Cameroon", "Central African Republic", "Uganda", "Tanzania", "Zambia", "Angola"]], ["Uganda", ["DR Congo", "Kenya", "Tanzania"]],
+        ["Kenya", ["Uganda", "Ethiopia", "Somalia", "Tanzania"]], ["Somalia", ["Ethiopia", "Kenya"]], ["Ethiopia", ["Sudan", "Kenya", "Somalia"]],
+        ["Angola", ["DR Congo", "Zambia", "South Africa"]], ["Zambia", ["Angola", "DR Congo", "Tanzania", "Mozambique", "South Africa"]],
+        ["Tanzania", ["DR Congo", "Uganda", "Kenya", "Zambia", "Mozambique"]], ["Mozambique", ["Tanzania", "Zambia", "South Africa"]], ["South Africa", ["Angola", "Zambia", "Mozambique"]]
+      ].map(([name, neighbors], index) => ({ name, neighbors, index, owner: null, armies: 3 }));
+
+      const mapElement = document.querySelector("#map");
+      const attackButton = document.querySelector("#attack");
+      const attackDiceElement = document.querySelector("#attack-dice");
+      const blueCountElement = document.querySelector("#blue-count");
+      const endPhaseButton = document.querySelector("#end-phase");
+      const fortifyButton = document.querySelector("#fortify");
+      const modeToggleButton = document.querySelector("#mode-toggle");
+      const phaseElement = document.querySelector("#phase");
+      const redCountElement = document.querySelector("#red-count");
+      const reinforcementsElement = document.querySelector("#reinforcements");
+      const restartButton = document.querySelector("#restart");
+      const statusElement = document.querySelector("#status");
+      const turnTitleElement = document.querySelector("#turn-title");
+      let currentPlayer = 0;
+      let phase = "deploy";
+      let reinforcements = 0;
+      let selectedSource = null;
+      let selectedTarget = null;
+      let botEnabled = false;
+      let gameOver = false;
+
+      function playerName(player) { return botEnabled && player === 1 ? "Bot" : player === 0 ? "Blue player" : "Red player"; }
+      function ownerName(player) { return player === 0 ? "Blue" : "Red"; }
+      function territoryByName(name) { return territories.find((territory) => territory.name === name); }
+      function ownedTerritories(player) { return territories.filter((territory) => territory.owner === player); }
+      function areNeighbors(first, second) { return first.neighbors.includes(second.name); }
+      function roll(count) { return Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1).sort((a, b) => b - a); }
+
+      function render() {
+        mapElement.replaceChildren();
+        territories.forEach((territory) => {
+          const button = document.createElement("button");
+          button.className = `territory ${territory.owner === 0 ? "blue" : "red"}${territory === selectedSource || territory === selectedTarget ? " selected" : ""}`;
+          button.type = "button";
+          button.innerHTML = `${territory.name}<span class="army">${territory.armies}</span>`;
+          button.setAttribute("aria-label", `${territory.name}, ${ownerName(territory.owner)}, ${territory.armies} armies`);
+          button.addEventListener("click", () => selectTerritory(territory));
+          mapElement.append(button);
+        });
+        const blueCount = ownedTerritories(0).length;
+        blueCountElement.textContent = blueCount;
+        redCountElement.textContent = territories.length - blueCount;
+        reinforcementsElement.textContent = reinforcements;
+        phaseElement.textContent = phase[0].toUpperCase() + phase.slice(1);
+        turnTitleElement.textContent = gameOver ? statusElement.textContent : `${playerName(currentPlayer)}'s turn`;
+        turnTitleElement.className = `turn ${currentPlayer === 0 ? "blue" : "red"}`;
+        attackButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "attack" || !selectedSource || !selectedTarget;
+        fortifyButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "fortify" || !selectedSource || !selectedTarget;
+        endPhaseButton.disabled = gameOver || currentPlayer === 1 && botEnabled;
+        endPhaseButton.textContent = phase === "deploy" ? "Finish deployment" : phase === "attack" ? "Go to fortify" : "End turn";
+      }
+
+      function setStatus(message) { statusElement.textContent = message; }
+
+      function startTurn() {
+        phase = "deploy";
+        reinforcements = Math.max(3, Math.floor(ownedTerritories(currentPlayer).length / 3));
+        selectedSource = null;
+        selectedTarget = null;
+        setStatus(`${playerName(currentPlayer)} has ${reinforcements} reinforcements to deploy.`);
+        render();
+        if (botEnabled && currentPlayer === 1) {
+          window.setTimeout(runBotTurn, 650);
+        }
+      }
+
+      function selectTerritory(territory) {
+        if (gameOver || (botEnabled && currentPlayer === 1)) return;
+        if (phase === "deploy") {
+          if (territory.owner !== currentPlayer) { setStatus("Choose one of your territories to deploy there."); render(); return; }
+          if (reinforcements === 0) { setStatus("Finish deployment before attacking."); render(); return; }
+          territory.armies += 1;
+          reinforcements -= 1;
+          setStatus(`${playerName(currentPlayer)} deployed one army to ${territory.name}.`);
+          render();
+          return;
+        }
+        if (!selectedSource) {
+          if (territory.owner !== currentPlayer) { setStatus("Select one of your territories first."); render(); return; }
+          selectedSource = territory;
+          setStatus(`Selected ${territory.name}. Now select ${phase === "attack" ? "an adjacent enemy" : "an adjacent territory you own"}.`);
+        } else if (territory === selectedSource) {
+          selectedSource = null;
+          selectedTarget = null;
+          setStatus("Selection cleared.");
+        } else if (phase === "attack" && territory.owner !== currentPlayer && areNeighbors(selectedSource, territory)) {
+          selectedTarget = territory;
+          setStatus(`${selectedSource.name} is ready to attack ${territory.name}.`);
+        } else if (phase === "fortify" && territory.owner === currentPlayer && areNeighbors(selectedSource, territory)) {
+          selectedTarget = territory;
+          setStatus(`Move one army from ${selectedSource.name} to ${territory.name}.`);
+        } else {
+          setStatus("Those territories are not valid for this action.");
+        }
+        render();
+      }
+
+      function checkWinner() {
+        const owner = territories[0].owner;
+        if (territories.every((territory) => territory.owner === owner)) {
+          gameOver = true;
+          setStatus(`${playerName(owner)} controls all of Africa and wins!`);
+          render();
+          return true;
+        }
+        return false;
+      }
+
+      function attack(source, target, diceRequested) {
+        if (source.armies < 2) return "You need at least two armies to attack.";
+        const attackDice = Math.min(diceRequested, 3, source.armies - 1);
+        const defendDice = Math.min(2, target.armies);
+        const attackerRolls = roll(attackDice);
+        const defenderRolls = roll(defendDice);
+        for (let index = 0; index < defendDice; index += 1) {
+          if (attackerRolls[index] > defenderRolls[index]) target.armies -= 1;
+          else source.armies -= 1;
+        }
+        let result = `${source.name} rolled ${attackerRolls.join(", ")}; ${target.name} rolled ${defenderRolls.join(", ")}. `;
+        if (target.armies === 0) {
+          target.owner = source.owner;
+          const movedArmies = Math.min(attackDice, source.armies - 1);
+          target.armies = Math.max(1, movedArmies);
+          source.armies -= target.armies;
+          result += `${source.name} captured ${target.name}!`;
+        } else result += "The battle continues.";
+        return result;
+      }
+
+      attackButton.addEventListener("click", () => {
+        if (!selectedSource || !selectedTarget) return;
+        setStatus(attack(selectedSource, selectedTarget, Number(attackDiceElement.value)));
+        if (!checkWinner()) { selectedTarget = null; render(); }
+      });
+
+      fortifyButton.addEventListener("click", () => {
+        if (!selectedSource || !selectedTarget || selectedSource.armies < 2) { setStatus("The source territory needs at least two armies."); render(); return; }
+        selectedSource.armies -= 1;
+        selectedTarget.armies += 1;
+        setStatus(`Moved one army to ${selectedTarget.name}.`);
+        selectedSource = null;
+        selectedTarget = null;
+        render();
+      });
+
+      endPhaseButton.addEventListener("click", () => {
+        if (phase === "deploy" && reinforcements > 0) { setStatus("Deploy all reinforcements first."); render(); return; }
+        if (phase === "deploy") { phase = "attack"; setStatus("Select a territory, then an adjacent enemy to attack."); }
+        else if (phase === "attack") { phase = "fortify"; selectedSource = null; selectedTarget = null; setStatus("You may fortify one adjacent territory, or end your turn."); }
+        else { currentPlayer = currentPlayer === 0 ? 1 : 0; startTurn(); return; }
+        selectedSource = null;
+        selectedTarget = null;
+        render();
+      });
+
+      function runBotTurn() {
+        if (!botEnabled || gameOver || currentPlayer !== 1) return;
+        const botTerritories = ownedTerritories(1);
+        for (let army = 0; army < reinforcements; army += 1) botTerritories[Math.floor(Math.random() * botTerritories.length)].armies += 1;
+        reinforcements = 0;
+        const options = botTerritories.flatMap((source) => territories.filter((target) => target.owner === 0 && areNeighbors(source, target) && source.armies > 1).map((target) => ({ source, target })));
+        if (options.length) {
+          const { source, target } = options[Math.floor(Math.random() * options.length)];
+          setStatus(`Bot attacks: ${attack(source, target, 3)}`);
+          if (checkWinner()) return;
+        } else setStatus("Bot deployed its armies and had no attack.");
+        render();
+        window.setTimeout(() => { currentPlayer = 0; startTurn(); }, 800);
+      }
+
+      function newGame() {
+        const shuffled = [...territories].sort(() => Math.random() - .5);
+        shuffled.forEach((territory, index) => { territory.owner = index % 2; territory.armies = 3; });
+        currentPlayer = 0;
+        gameOver = false;
+        startTurn();
+      }
+
+      modeToggleButton.addEventListener("click", () => {
+        botEnabled = !botEnabled;
+        modeToggleButton.textContent = botEnabled ? "Play 2 players" : "Play vs bot";
+        newGame();
+      });
+      restartButton.addEventListener("click", newGame);
+      newGame();
+    </script>
+  </body>
+</html>
