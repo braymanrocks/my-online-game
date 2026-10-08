@@ -14,13 +14,44 @@
       h1 { color: #ffd45d; font-size: clamp(2.3rem, 6vw, 4.3rem); letter-spacing: -.06em; margin: 0; text-shadow: 0 3px #70501b; }
       .intro { color: #e2d5aa; margin: 8px 0 18px; }
       .layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 290px; }
-      #map { background: rgba(8, 25, 23, .76); border: 5px solid #796039; border-radius: 18px 18px 42% 42%; display: grid; gap: 7px; grid-template-columns: repeat(6, 1fr); padding: 16px; }
-      .territory { align-items: center; background: #435f43; border: 2px solid #789168; border-radius: 10px; color: #fff; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: clamp(.63rem, 1.5vw, .9rem); justify-content: center; min-height: 58px; padding: 4px; text-align: center; transition: filter 120ms ease, transform 120ms ease; }
-      .territory:hover, .territory:focus-visible { filter: brightness(1.2); outline: 3px solid #ffe17c; outline-offset: 2px; transform: translateY(-2px); }
+      #map { aspect-ratio: 7 / 9; isolation: isolate; justify-self: center; max-width: 680px; position: relative; width: 100%; }
+      #map::before { background: linear-gradient(140deg, #63834d, #274b3d 72%); clip-path: polygon(31% 3%, 47% 1%, 63% 7%, 79% 14%, 87% 25%, 84% 37%, 89% 45%, 84% 52%, 78% 55%, 73% 65%, 65% 74%, 59% 89%, 53% 98%, 45% 97%, 38% 89%, 30% 83%, 24% 70%, 17% 60%, 14% 47%, 8% 36%, 10% 23%, 19% 12%); content: ""; filter: drop-shadow(0 8px 0 #1a2e25) drop-shadow(0 16px 18px rgba(0, 0, 0, .5)); inset: 0; position: absolute; z-index: -1; }
+      .territory { align-items: center; background: #435f43; border: 2px solid #789168; border-radius: 10px; color: #fff; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: clamp(.48rem, 1.25vw, .8rem); height: 8%; justify-content: center; min-height: 0; padding: 2px; position: absolute; text-align: center; transform: translate(-50%, -50%); transition: filter 120ms ease, transform 120ms ease; width: 13%; }
+      .territory:hover, .territory:focus-visible { filter: brightness(1.2); outline: 3px solid #ffe17c; outline-offset: 2px; transform: translate(-50%, calc(-50% - 2px)); }
       .territory.blue { background: #286da5; border-color: #78caff; }
       .territory.red { background: #a6403e; border-color: #ff9389; }
       .territory.selected { box-shadow: 0 0 0 3px #ffe17c, 0 0 18px #ffe17c; }
       .army { color: #fff6bc; font-size: 1.2em; font-weight: bold; }
+      .territory:nth-child(1) { left: 23%; top: 14%; }
+      .territory:nth-child(2) { left: 39%; top: 14%; }
+      .territory:nth-child(3) { left: 52%; top: 17%; }
+      .territory:nth-child(4) { left: 64%; top: 21%; }
+      .territory:nth-child(5) { left: 77%; top: 19%; }
+      .territory:nth-child(6) { left: 19%; top: 26%; }
+      .territory:nth-child(7) { left: 33%; top: 29%; }
+      .territory:nth-child(8) { left: 49%; top: 29%; }
+      .territory:nth-child(9) { left: 62%; top: 31%; }
+      .territory:nth-child(10) { left: 75%; top: 30%; }
+      .territory:nth-child(11) { left: 14%; top: 36%; }
+      .territory:nth-child(12) { left: 23%; top: 43%; }
+      .territory:nth-child(13) { left: 34%; top: 44%; }
+      .territory:nth-child(14) { left: 47%; top: 42%; }
+      .territory:nth-child(15) { left: 58%; top: 46%; }
+      .territory:nth-child(16) { left: 18%; top: 51%; }
+      .territory:nth-child(17) { left: 28%; top: 53%; }
+      .territory:nth-child(18) { left: 39%; top: 52%; }
+      .territory:nth-child(19) { left: 49%; top: 51%; }
+      .territory:nth-child(20) { left: 65%; top: 49%; }
+      .territory:nth-child(21) { left: 55%; top: 59%; }
+      .territory:nth-child(22) { left: 67%; top: 58%; }
+      .territory:nth-child(23) { left: 77%; top: 62%; }
+      .territory:nth-child(24) { left: 86%; top: 56%; }
+      .territory:nth-child(25) { left: 78%; top: 52%; }
+      .territory:nth-child(26) { left: 42%; top: 69%; }
+      .territory:nth-child(27) { left: 58%; top: 71%; }
+      .territory:nth-child(28) { left: 71%; top: 71%; }
+      .territory:nth-child(29) { left: 80%; top: 79%; }
+      .territory:nth-child(30) { left: 58%; top: 88%; }
       .panel { background: rgba(9, 24, 24, .82); border: 2px solid #796039; border-radius: 16px; padding: 18px; }
       .panel h2 { color: #ffd45d; font-size: 1.25rem; margin: 0 0 10px; }
       #status { line-height: 1.45; margin: 0 0 14px; min-height: 3em; }
@@ -37,7 +68,7 @@
       select { background: #182a27; border: 1px solid #a58d55; border-radius: 7px; color: #fff; padding: 9px; }
       .rules { color: #d8d0b4; font-size: .88rem; line-height: 1.4; }
       .footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-      @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } #map { gap: 4px; padding: 9px; } .territory { min-height: 50px; } }
+      @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } #map { max-width: 580px; } }
     </style>
   </head>
   <body>
@@ -66,7 +97,7 @@
             <button id="fortify" type="button">Fortify selected territory</button>
             <button id="end-phase" type="button">Finish deployment</button>
           </div>
-          <p class="rules"><strong>How to play:</strong> Click one of your territories, then an adjacent enemy to select an attack. During fortify, select two adjacent territories you own to move one army. The attacker needs at least two armies.</p>
+          <p class="rules"><strong>How to play:</strong> Click one of your territories, then an adjacent enemy to select an attack. During fortify, select two adjacent territories you own to move all but one army. The attacker needs at least two armies.</p>
         </aside>
       </div>
       <div class="footer-actions">
@@ -182,7 +213,7 @@
           setStatus(`${selectedSource.name} is ready to attack ${territory.name}.`);
         } else if (phase === "fortify" && territory.owner === currentPlayer && areNeighbors(selectedSource, territory)) {
           selectedTarget = territory;
-          setStatus(`Move one army from ${selectedSource.name} to ${territory.name}.`);
+          setStatus(`Move all but one army from ${selectedSource.name} to ${territory.name}.`);
         } else {
           setStatus("Those territories are not valid for this action.");
         }
@@ -229,9 +260,10 @@
 
       fortifyButton.addEventListener("click", () => {
         if (!selectedSource || !selectedTarget || selectedSource.armies < 2) { setStatus("The source territory needs at least two armies."); render(); return; }
-        selectedSource.armies -= 1;
-        selectedTarget.armies += 1;
-        setStatus(`Moved one army to ${selectedTarget.name}.`);
+        const armiesToMove = selectedSource.armies - 1;
+        selectedSource.armies = 1;
+        selectedTarget.armies += armiesToMove;
+        setStatus(`Moved ${armiesToMove} armies to ${selectedTarget.name}.`);
         selectedSource = null;
         selectedTarget = null;
         render();
