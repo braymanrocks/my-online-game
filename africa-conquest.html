@@ -16,42 +16,14 @@
       .layout { display: grid; gap: 18px; grid-template-columns: minmax(0, 1fr) 290px; }
       #map { aspect-ratio: 7 / 9; isolation: isolate; justify-self: center; max-width: 680px; position: relative; width: 100%; }
       #map::before { background: linear-gradient(140deg, #63834d, #274b3d 72%); clip-path: polygon(31% 3%, 47% 1%, 63% 7%, 79% 14%, 87% 25%, 84% 37%, 89% 45%, 84% 52%, 78% 55%, 73% 65%, 65% 74%, 59% 89%, 53% 98%, 45% 97%, 38% 89%, 30% 83%, 24% 70%, 17% 60%, 14% 47%, 8% 36%, 10% 23%, 19% 12%); content: ""; filter: drop-shadow(0 8px 0 #1a2e25) drop-shadow(0 16px 18px rgba(0, 0, 0, .5)); inset: 0; position: absolute; z-index: -1; }
-      .territory { align-items: center; background: #435f43; border: 2px solid #789168; border-radius: 10px; color: #fff; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: clamp(.34rem, .85vw, .68rem); height: 6.5%; justify-content: center; min-height: 0; padding: 1px; position: absolute; text-align: center; transform: translate(-50%, -50%); transition: filter 120ms ease, transform 120ms ease; width: 9%; }
+      .connections { height: 100%; inset: 0; pointer-events: none; position: absolute; width: 100%; z-index: 0; }
+      .connection { stroke: #d7c47c; stroke-linecap: round; stroke-opacity: .78; stroke-width: .6; }
+      .territory { align-items: center; background: #435f43; border: 2px solid #789168; border-radius: 10px; color: #fff; cursor: pointer; display: flex; flex-direction: column; font: inherit; font-size: clamp(.4rem, .95vw, .7rem); height: 7%; justify-content: center; min-height: 0; padding: 2px; position: absolute; text-align: center; transform: translate(-50%, -50%); transition: filter 120ms ease, transform 120ms ease; width: 10.5%; z-index: 1; }
       .territory:hover, .territory:focus-visible { filter: brightness(1.2); outline: 3px solid #ffe17c; outline-offset: 2px; transform: translate(-50%, calc(-50% - 2px)); }
       .territory.blue { background: #286da5; border-color: #78caff; }
       .territory.red { background: #a6403e; border-color: #ff9389; }
       .territory.selected { box-shadow: 0 0 0 3px #ffe17c, 0 0 18px #ffe17c; }
       .army { color: #fff6bc; font-size: 1.2em; font-weight: bold; }
-      .territory:nth-child(1) { left: 23%; top: 14%; }
-      .territory:nth-child(2) { left: 39%; top: 14%; }
-      .territory:nth-child(3) { left: 52%; top: 17%; }
-      .territory:nth-child(4) { left: 64%; top: 21%; }
-      .territory:nth-child(5) { left: 77%; top: 19%; }
-      .territory:nth-child(6) { left: 19%; top: 26%; }
-      .territory:nth-child(7) { left: 33%; top: 29%; }
-      .territory:nth-child(8) { left: 49%; top: 29%; }
-      .territory:nth-child(9) { left: 62%; top: 31%; }
-      .territory:nth-child(10) { left: 75%; top: 30%; }
-      .territory:nth-child(11) { left: 14%; top: 36%; }
-      .territory:nth-child(12) { left: 23%; top: 43%; }
-      .territory:nth-child(13) { left: 34%; top: 44%; }
-      .territory:nth-child(14) { left: 47%; top: 42%; }
-      .territory:nth-child(15) { left: 58%; top: 46%; }
-      .territory:nth-child(16) { left: 18%; top: 51%; }
-      .territory:nth-child(17) { left: 28%; top: 53%; }
-      .territory:nth-child(18) { left: 39%; top: 52%; }
-      .territory:nth-child(19) { left: 49%; top: 51%; }
-      .territory:nth-child(20) { left: 67%; top: 43%; }
-      .territory:nth-child(21) { left: 55%; top: 59%; }
-      .territory:nth-child(22) { left: 65%; top: 54%; }
-      .territory:nth-child(23) { left: 73%; top: 62%; }
-      .territory:nth-child(24) { left: 86%; top: 54%; }
-      .territory:nth-child(25) { left: 75%; top: 53%; }
-      .territory:nth-child(26) { left: 42%; top: 69%; }
-      .territory:nth-child(27) { left: 58%; top: 71%; }
-      .territory:nth-child(28) { left: 71%; top: 71%; }
-      .territory:nth-child(29) { left: 80%; top: 79%; }
-      .territory:nth-child(30) { left: 58%; top: 88%; }
       .panel { background: rgba(9, 24, 24, .82); border: 2px solid #796039; border-radius: 16px; padding: 18px; }
       .panel h2 { color: #ffd45d; font-size: 1.25rem; margin: 0 0 10px; }
       #status { line-height: 1.45; margin: 0 0 14px; min-height: 3em; }
@@ -75,7 +47,7 @@
     <main>
       <a class="back-link" href="index.html">&larr; All games</a>
       <h1>Africa Conquest</h1>
-      <p class="intro">A two-player, Risk-style battle for 30 African territories.</p>
+      <p class="intro">A two-player, Risk-style battle for 14 connected African territories.</p>
       <div class="layout">
         <section id="map" aria-label="Africa territory map"></section>
         <aside class="panel">
@@ -107,21 +79,21 @@
     </main>
     <script>
       const territories = [
-        ["Morocco", ["Algeria", "Mauritania"]], ["Algeria", ["Morocco", "Tunisia", "Libya", "Mali", "Niger"]],
-        ["Tunisia", ["Algeria", "Libya"]], ["Libya", ["Tunisia", "Algeria", "Niger", "Chad", "Sudan", "Egypt"]],
-        ["Egypt", ["Libya", "Sudan"]], ["Mauritania", ["Morocco", "Mali", "Senegal"]],
-        ["Mali", ["Mauritania", "Algeria", "Niger", "Burkina Faso", "Guinea", "Senegal"]], ["Niger", ["Algeria", "Libya", "Chad", "Nigeria", "Benin", "Burkina Faso", "Mali"]],
-        ["Chad", ["Libya", "Sudan", "Central African Republic", "Cameroon", "Nigeria", "Niger"]], ["Sudan", ["Egypt", "Libya", "Chad", "Central African Republic", "Ethiopia"]],
-        ["Senegal", ["Mauritania", "Mali", "Guinea"]], ["Guinea", ["Senegal", "Mali", "Sierra Leone", "Cote d'Ivoire"]],
-        ["Ghana", ["Cote d'Ivoire", "Burkina Faso", "Togo", "Benin"]], ["Nigeria", ["Niger", "Chad", "Cameroon", "Benin"]],
-        ["Cameroon", ["Nigeria", "Chad", "Central African Republic", "DR Congo"]], ["Sierra Leone", ["Guinea", "Cote d'Ivoire"]],
-        ["Cote d'Ivoire", ["Guinea", "Sierra Leone", "Ghana", "Burkina Faso"]], ["Burkina Faso", ["Mali", "Niger", "Benin", "Ghana", "Cote d'Ivoire"]],
-        ["Benin", ["Niger", "Nigeria", "Burkina Faso", "Ghana"]], ["Central African Republic", ["Chad", "Sudan", "Cameroon", "DR Congo"]],
-        ["DR Congo", ["Cameroon", "Central African Republic", "Uganda", "Tanzania", "Zambia", "Angola"]], ["Uganda", ["DR Congo", "Kenya", "Tanzania"]],
-        ["Kenya", ["Uganda", "Ethiopia", "Somalia", "Tanzania"]], ["Somalia", ["Ethiopia", "Kenya"]], ["Ethiopia", ["Sudan", "Kenya", "Somalia"]],
-        ["Angola", ["DR Congo", "Zambia", "South Africa"]], ["Zambia", ["Angola", "DR Congo", "Tanzania", "Mozambique", "South Africa"]],
-        ["Tanzania", ["DR Congo", "Uganda", "Kenya", "Zambia", "Mozambique"]], ["Mozambique", ["Tanzania", "Zambia", "South Africa"]], ["South Africa", ["Angola", "Zambia", "Mozambique"]]
-      ].map(([name, neighbors], index) => ({ name, neighbors, index, owner: null, armies: 3 }));
+        ["Morocco", ["Algeria"], 24, 14],
+        ["Algeria", ["Morocco", "Libya", "Niger"], 40, 18],
+        ["Libya", ["Algeria", "Egypt", "Niger", "Chad", "Sudan"], 60, 23],
+        ["Egypt", ["Libya", "Sudan"], 77, 20],
+        ["Niger", ["Algeria", "Libya", "Chad"], 46, 35],
+        ["Chad", ["Libya", "Niger", "Sudan"], 62, 37],
+        ["Sudan", ["Libya", "Egypt", "Chad", "Ethiopia"], 75, 35],
+        ["Ethiopia", ["Sudan", "Kenya"], 77, 49],
+        ["Kenya", ["Ethiopia", "Tanzania"], 74, 62],
+        ["Tanzania", ["Kenya", "Zambia", "Mozambique"], 69, 73],
+        ["Angola", ["Zambia", "South Africa"], 44, 72],
+        ["Zambia", ["Angola", "Tanzania", "Mozambique", "South Africa"], 57, 74],
+        ["Mozambique", ["Tanzania", "Zambia", "South Africa"], 80, 80],
+        ["South Africa", ["Angola", "Zambia", "Mozambique"], 61, 90]
+      ].map(([name, neighbors, left, top], index) => ({ name, neighbors, index, left, top, owner: null, armies: 3 }));
 
       const mapElement = document.querySelector("#map");
       const attackButton = document.querySelector("#attack");
@@ -153,11 +125,32 @@
 
       function render() {
         mapElement.replaceChildren();
+        const connections = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        connections.classList.add("connections");
+        connections.setAttribute("viewBox", "0 0 100 100");
+        connections.setAttribute("aria-hidden", "true");
+        territories.forEach((territory) => {
+          territory.neighbors.forEach((neighborName) => {
+            const neighbor = territoryByName(neighborName);
+            if (territory.index < neighbor.index) {
+              const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+              line.classList.add("connection");
+              line.setAttribute("x1", territory.left);
+              line.setAttribute("y1", territory.top);
+              line.setAttribute("x2", neighbor.left);
+              line.setAttribute("y2", neighbor.top);
+              connections.append(line);
+            }
+          });
+        });
+        mapElement.append(connections);
         territories.forEach((territory) => {
           const button = document.createElement("button");
           button.className = `territory ${territory.owner === 0 ? "blue" : "red"}${territory === selectedSource || territory === selectedTarget ? " selected" : ""}`;
           button.type = "button";
           button.innerHTML = `${territory.name}<span class="army">${territory.armies}</span>`;
+          button.style.left = `${territory.left}%`;
+          button.style.top = `${territory.top}%`;
           button.setAttribute("aria-label", `${territory.name}, ${ownerName(territory.owner)}, ${territory.armies} armies`);
           button.addEventListener("click", () => selectTerritory(territory));
           mapElement.append(button);

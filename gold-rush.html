@@ -314,8 +314,8 @@
     <main>
       <a class="back-link" href="index.html">&larr; All games</a>
       <h1>Gold Rush</h1>
-      <p class="intro">Race to collect 10 gold pieces first. Press a movement key once to move one tile, or hold it to keep moving.</p>
-      <p id="status" aria-live="polite">First to 10 gold wins!</p>
+      <p class="intro">Race to collect 20 gold pieces first. Press a movement key once to move one tile, or hold it to keep moving.</p>
+      <p id="status" aria-live="polite">First to 20 gold wins!</p>
       <p id="power-status" aria-live="polite"></p>
       <div class="game-area">
         <section class="scores" aria-label="Scores">
@@ -349,7 +349,7 @@
       const SHIELD_DURATION = 10000;
       const SHIELD_SPAWN_INTERVAL = 20000;
       const SWORD_DURATION = 5000;
-      const WINNING_SCORE = 10;
+      const WINNING_SCORE = 20;
       const boardElement = document.querySelector("#board");
       const scoreOneElement = document.querySelector("#score-one");
       const scoreTwoElement = document.querySelector("#score-two");
@@ -711,7 +711,7 @@
         lastBotBomb = Date.now();
         lastBotMove = 0;
         gameOver = false;
-        statusElement.textContent = "First to 10 gold wins!";
+        statusElement.textContent = "First to 20 gold wins!";
         renderGame();
       }
 
