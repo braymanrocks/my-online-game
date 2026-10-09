@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Word Scramble | My Online Game</title>
+  <style>
+    :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:620px; padding:28px 18px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:22px; } fieldset { border:0; margin:14px 0; padding:0; } label { cursor:pointer; } #scramble { color:#ffcf3f; font-size:clamp(2rem,10vw,4rem); font-weight:bold; letter-spacing:.16em; margin:24px 0; overflow-wrap:anywhere; } input { background:#0b1428; border:2px solid #4672b8; border-radius:8px; color:white; font:inherit; padding:11px; width:min(100%,340px); } button { background:#ffcf3f; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; margin:9px 3px; padding:11px 15px; } button:focus-visible,input:focus-visible { outline:3px solid white; outline-offset:2px; } #status { color:#c8d5f0; min-height:1.5em; }
+  </style>
+</head>
+<body><main><a href="index.html">← Back to games</a><h1>Word Scramble</h1><p>Unscramble five words before the clock reaches zero.</p><section class="panel" aria-label="Word Scramble game">
+  <fieldset><legend>Difficulty</legend><label><input type="radio" name="difficulty" value="easy" checked> Easy</label> <label><input type="radio" name="difficulty" value="medium"> Medium</label> <label><input type="radio" name="difficulty" value="hard"> Hard</label></fieldset>
+  <p><strong>Score: <span id="score">0</span>/5</strong> · <strong>Time: <span id="time">—</span></strong></p><div id="scramble" aria-live="polite">READY</div><label for="answer">Your answer</label><br><input id="answer" autocomplete="off" disabled><br><button id="check" type="button">Check answer</button><button id="restart" type="button">Start game</button><p id="status" role="status">Start a game to begin.</p>
+  </section></main><script>
+    const banks={easy:["apple","beach","cloud","dance","flame","grape","happy","lemon"],medium:["bridge","candle","forest","guitar","island","jungle","planet","rocket"],hard:["adventure","butterfly","calendar","dinosaur","language","mountain","treasure","umbrella"]},times={easy:75,medium:55,hard:38};
+    const scramble=document.querySelector("#scramble"),answer=document.querySelector("#answer"),scoreEl=document.querySelector("#score"),timeEl=document.querySelector("#time"),status=document.querySelector("#status");let words,word,index,score,remaining,timer;
+    function mixed(w){let s=w;while(s===w)s=[...w].sort(()=>Math.random()-.5).join("");return s.toUpperCase();}
+    function show(){word=words[index];scramble.textContent=mixed(word);answer.value="";answer.focus();status.textContent=`Word ${index+1} of 5.`;}
+    function end(message){clearInterval(timer);answer.disabled=true;status.textContent=message;document.querySelector("#restart").textContent="Play again";}
+    function start(){clearInterval(timer);const level=document.querySelector('input[name="difficulty"]:checked').value;words=[...banks[level]].sort(()=>Math.random()-.5).slice(0,5);index=score=0;remaining=times[level];scoreEl.textContent=score;timeEl.textContent=`${remaining}s`;answer.disabled=false;document.querySelector("#restart").textContent="Restart";show();timer=setInterval(()=>{remaining--;timeEl.textContent=`${remaining}s`;if(!remaining)end(`Time is up! You solved ${score} of 5.`);},1000);}
+    function check(){if(answer.disabled)return;if(answer.value.trim().toLowerCase()!==word){status.textContent="Not quite — try again.";return;}score++;scoreEl.textContent=score;index++;if(index===5)end(`You won with ${remaining} seconds left!`);else show();}
+    document.querySelector("#restart").addEventListener("click",start);document.querySelector("#check").addEventListener("click",check);answer.addEventListener("keydown",e=>{if(e.key==="Enter")check();});
+  </script></body></html>

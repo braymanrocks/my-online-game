@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Reaction Race | My Online Game</title>
+  <style>
+    :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:620px; padding:28px 18px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:22px; } fieldset { border:0; margin:14px 0; padding:0; } label { cursor:pointer; } button { background:#ffcf3f; border:0; border-radius:10px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:11px 17px; } button:focus-visible { outline:3px solid white; outline-offset:3px; }
+    #target { background:#27405f; color:#f8fbff; display:block; font-size:clamp(1.2rem,5vw,1.7rem); height:200px; margin:20px auto; max-width:460px; width:100%; } #target.wait { background:#a1424c; } #target.go { background:#238355; } #status { color:#c8d5f0; min-height:1.5em; }
+  </style>
+</head>
+<body><main><a href="index.html">← Back to games</a><h1>Reaction Race</h1><p>Wait for green, then react as quickly as possible across five rounds.</p><section class="panel" aria-label="Reaction Race game">
+  <fieldset><legend>Difficulty</legend><label><input type="radio" name="difficulty" value="easy" checked> Easy</label> <label><input type="radio" name="difficulty" value="medium"> Medium</label> <label><input type="radio" name="difficulty" value="hard"> Hard</label></fieldset>
+  <button id="start" type="button">Start race</button><button id="target" type="button" aria-live="assertive">Press Start</button><p><strong>Round: <span id="round">0</span>/5</strong> · <strong>Best: <span id="best">—</span></strong></p><p id="status" role="status">Choose a difficulty to set the wait window.</p>
+  </section></main><script>
+    const target=document.querySelector("#target"), start=document.querySelector("#start"), roundEl=document.querySelector("#round"), bestEl=document.querySelector("#best"), status=document.querySelector("#status");
+    const waits={easy:[1800,3500],medium:[1000,2600],hard:[500,1500]}; let state="idle",round=0,best=null,timer,goTime;
+    function finish(){state="idle";target.className="";target.textContent="Race complete";start.textContent="Race again";status.textContent=`Finished! Best reaction: ${best} ms.`;}
+    function queue(){const [min,max]=waits[document.querySelector('input[name="difficulty"]:checked').value];state="waiting";target.className="wait";target.textContent="Wait for green…";timer=setTimeout(()=>{state="go";goTime=performance.now();target.className="go";target.textContent="CLICK NOW!";},min+Math.random()*(max-min));}
+    start.addEventListener("click",()=>{clearTimeout(timer);round=0;best=null;roundEl.textContent=round;bestEl.textContent="—";start.textContent="Restart race";status.textContent="Five reactions — wait for green.";queue();});
+    target.addEventListener("click",()=>{if(state==="waiting"){clearTimeout(timer);state="idle";target.className="";target.textContent="Too soon!";status.textContent="False start. Start a new race.";start.textContent="Start race";return;}if(state!=="go")return;const reaction=Math.round(performance.now()-goTime);best=best===null?reaction:Math.min(best,reaction);bestEl.textContent=`${best} ms`;round++;roundEl.textContent=round;status.textContent=`${reaction} ms! ${round<5?"Get ready for the next one.":" "}`;if(round===5)finish();else {state="between";target.className="";target.textContent=`${reaction} ms — click to continue`;target.onclick=()=>{target.onclick=null;queue();};}});
+  </script></body></html>

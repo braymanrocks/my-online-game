@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Snake | My Online Game</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, sans-serif; } * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top, #25437a, #10172b 65%); color: #f8fbff; }
+    main { width: min(94vw, 620px); margin: auto; padding: 28px 0 40px; text-align: center; }
+    a { color: #ffcf3f; } h1 { margin: 18px 0 8px; } .panel { background: rgba(20,31,58,.88); border: 1px solid rgba(255,255,255,.18); border-radius: 18px; padding: 18px; }
+    .controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 12px; margin: 14px 0; }
+    fieldset { border: 0; margin: 0; padding: 0; } legend { font-weight: bold; } label { cursor: pointer; }
+    button { background: #ffcf3f; border: 0; border-radius: 8px; color: #17203b; cursor: pointer; font: inherit; font-weight: bold; padding: 10px 15px; }
+    button:hover, button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+    canvas { background: #0b1428; border: 3px solid #4672b8; border-radius: 8px; display: block; margin: 16px auto; max-width: 100%; touch-action: none; }
+    #status { min-height: 1.5em; color: #c8d5f0; } .keys { color: #c8d5f0; font-size: .95rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="index.html">← Back to games</a>
+    <h1>Snake</h1>
+    <p>Eat the fruit, grow longer, and do not hit a wall or yourself.</p>
+    <section class="panel" aria-label="Snake game">
+      <div class="controls">
+        <fieldset><legend>Difficulty</legend>
+          <label><input type="radio" name="difficulty" value="easy" checked> Easy</label>
+          <label><input type="radio" name="difficulty" value="medium"> Medium</label>
+          <label><input type="radio" name="difficulty" value="hard"> Hard</label>
+        </fieldset>
+        <button id="restart" type="button">Restart</button>
+      </div>
+      <strong>Score: <span id="score">0</span></strong>
+      <canvas id="board" width="400" height="400" tabindex="0" role="application" aria-label="Snake board. Use arrow keys or W A S D to move."></canvas>
+      <p id="status" role="status">Press an arrow key or W, A, S, D to start.</p>
+      <p class="keys">Arrow keys / W A S D to steer. Click the board to focus it.</p>
+    </section>
+  </main>
+  <script>
+    const canvas = document.querySelector("#board"), ctx = canvas.getContext("2d"), size = 20;
+    const scoreEl = document.querySelector("#score"), status = document.querySelector("#status");
+    let snake, food, direction, nextDirection, score, timer, playing;
+    const speeds = { easy: 180, medium: 115, hard: 70 };
+    function randomFood() { do { food = { x: Math.floor(Math.random() * size), y: Math.floor(Math.random() * size) }; } while (snake.some(p => p.x === food.x && p.y === food.y)); }
+    function draw() {
+      ctx.fillStyle = "#0b1428"; ctx.fillRect(0, 0, 400, 400);
+      ctx.strokeStyle = "#182744"; for (let i = 0; i <= size; i++) { ctx.beginPath(); ctx.moveTo(i * 20, 0); ctx.lineTo(i * 20, 400); ctx.moveTo(0, i * 20); ctx.lineTo(400, i * 20); ctx.stroke(); }
+      ctx.fillStyle = "#ff5f6d"; ctx.fillRect(food.x * 20 + 3, food.y * 20 + 3, 14, 14);
+      snake.forEach((p, i) => { ctx.fillStyle = i ? "#64dca5" : "#ffcf3f"; ctx.fillRect(p.x * 20 + 2, p.y * 20 + 2, 16, 16); });
+    }
+    function step() {
+      direction = nextDirection; const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
+      if (head.x < 0 || head.y < 0 || head.x >= size || head.y >= size || snake.some(p => p.x === head.x && p.y === head.y)) { playing = false; clearInterval(timer); status.textContent = `Game over! Final score: ${score}. Restart to try again.`; return; }
+      snake.unshift(head);
+      if (head.x === food.x && head.y === food.y) { score++; scoreEl.textContent = score; randomFood(); } else snake.pop();
+      draw();
+    }
+    function start() { if (!playing) { playing = true; status.textContent = "Go!"; timer = setInterval(step, speeds[document.querySelector('input[name="difficulty"]:checked').value]); } }
+    function reset() { clearInterval(timer); snake = [{x:10,y:10},{x:9,y:10},{x:8,y:10}]; direction = {x:1,y:0}; nextDirection = direction; score = 0; playing = false; scoreEl.textContent = score; randomFood(); draw(); status.textContent = "Press an arrow key or W, A, S, D to start."; canvas.focus(); }
+    document.addEventListener("keydown", e => { const moves = { ArrowUp:[0,-1], w:[0,-1], W:[0,-1], ArrowDown:[0,1], s:[0,1], S:[0,1], ArrowLeft:[-1,0], a:[-1,0], A:[-1,0], ArrowRight:[1,0], d:[1,0], D:[1,0] }, move = moves[e.key]; if (!move) return; e.preventDefault(); if (move[0] !== -direction.x || move[1] !== -direction.y) nextDirection = {x:move[0],y:move[1]}; start(); });
+    document.querySelector("#restart").addEventListener("click", reset); reset();
+  </script>
+</body>
+</html>

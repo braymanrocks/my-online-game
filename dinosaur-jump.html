@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dinosaur Jump | My Online Game</title>
+  <style>
+    :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:720px; padding:28px 14px 40px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:18px; } fieldset { border:0; margin:12px 0; padding:0; } label { cursor:pointer; } button { background:#ffcf3f; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:10px 15px; } button:focus-visible,canvas:focus-visible { outline:3px solid white; outline-offset:3px; } canvas { background:#0b1428; border:3px solid #4672b8; border-radius:8px; display:block; margin:15px auto; max-width:100%; } #status { color:#c8d5f0; min-height:1.5em; }
+  </style>
+</head>
+<body><main><a href="index.html">← Back to games</a><h1>Dinosaur Jump</h1><p>Jump over cacti and see how far you can run.</p><section class="panel" aria-label="Dinosaur Jump game">
+  <fieldset><legend>Difficulty</legend><label><input type="radio" name="difficulty" value="easy" checked> Easy</label> <label><input type="radio" name="difficulty" value="medium"> Medium</label> <label><input type="radio" name="difficulty" value="hard"> Hard</label></fieldset>
+  <button id="restart" type="button">Start run</button><p><strong>Score: <span id="score">0</span></strong></p><canvas id="game" width="640" height="240" tabindex="0" role="application" aria-label="Dinosaur Jump. Press space, up arrow, or click to jump."></canvas><p id="status" role="status">Press Start run, then jump with Space, Up, or a click.</p>
+  </section></main><script>
+    const canvas=document.querySelector("#game"),ctx=canvas.getContext("2d"),scoreEl=document.querySelector("#score"),status=document.querySelector("#status");const levels={easy:{speed:4,gap:115},medium:{speed:6,gap:85},hard:{speed:8,gap:62}};let dino,cactus,score,running,last,settings;
+    function reset(){settings=levels[document.querySelector('input[name="difficulty"]:checked').value];dino={x:65,y:172,vy:0};cactus={x:640,w:22,h:38};score=0;running=true;last=performance.now();scoreEl.textContent=0;status.textContent="Run! Jump over the cacti.";document.querySelector("#restart").textContent="Restart run";canvas.focus();requestAnimationFrame(loop);}
+    function draw(){ctx.fillStyle="#0b1428";ctx.fillRect(0,0,640,240);ctx.strokeStyle="#c8d5f0";ctx.beginPath();ctx.moveTo(0,210);ctx.lineTo(640,210);ctx.stroke();ctx.fillStyle="#64dca5";ctx.fillRect(dino.x,dino.y,28,38);ctx.fillStyle="#ff5f6d";ctx.fillRect(cactus.x,210-cactus.h,cactus.w,cactus.h);ctx.fillStyle="#c8d5f0";ctx.font="16px Arial";ctx.fillText("🦖",dino.x-3,dino.y+31);}
+    function loop(now){if(!running)return;const dt=Math.min(2,(now-last)/16.67);last=now;dino.vy+=.65*dt;dino.y+=dino.vy*dt;if(dino.y>172){dino.y=172;dino.vy=0;}cactus.x-=settings.speed*dt;if(cactus.x+cactus.w<0){cactus.x=640+Math.random()*settings.gap;score++;scoreEl.textContent=score;}if(dino.x+25>cactus.x&&dino.x<cactus.x+cactus.w&&dino.y+38>210-cactus.h){running=false;draw();status.textContent=`Game over! Score: ${score}. Restart to run again.`;return;}draw();requestAnimationFrame(loop);}
+    function jump(){if(running&&dino.y>=171)dino.vy=-12;}
+    document.querySelector("#restart").addEventListener("click",reset);canvas.addEventListener("click",jump);document.addEventListener("keydown",e=>{if([" ","ArrowUp","w","W"].includes(e.key)){e.preventDefault();jump();}});draw();
+  </script></body></html>

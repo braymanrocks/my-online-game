@@ -12,3 +12,13 @@ conect 4
 gold rush
 
 africa conquest
+
+snake
+
+whack-a-mole
+
+reaction race
+
+word scramble
+
+dinosaur jump
