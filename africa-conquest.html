@@ -172,7 +172,7 @@
 
       function startTurn() {
         phase = "deploy";
-        reinforcements = Math.max(3, Math.floor(ownedTerritories(currentPlayer).length / 3));
+        reinforcements = ownedTerritories(currentPlayer).length;
         selectedSource = null;
         selectedTarget = null;
         setStatus(`${playerName(currentPlayer)} has ${reinforcements} reinforcements to deploy.`);
