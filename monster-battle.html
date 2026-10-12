@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monster Battle</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, sans-serif; --panel:#17243b; --ink:#f4f7ff; --muted:#b5c5df; --p1:#ff9b3d; --p2:#b783ff; --accent:#ffd15c; }
+    * { box-sizing:border-box; } body { margin:0; min-height:100vh; background:radial-gradient(circle at top,#294f7a,#0c1322 62%); color:var(--ink); }
+    main { max-width:1180px; margin:auto; padding:26px 18px 50px; } h1 { margin:0; text-align:center; font-size:clamp(2rem,6vw,3.6rem); } h2,h3 { margin-top:0; } p { color:var(--muted); line-height:1.5; }
+    button { border:1px solid #7385a5; border-radius:10px; background:#273955; color:var(--ink); cursor:pointer; font:inherit; padding:10px 13px; } button:hover:not(:disabled),button:focus-visible { border-color:var(--accent); outline:2px solid transparent; background:#344d71; } button:disabled { cursor:not-allowed; opacity:.46; }
+    .topline { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin:18px 0; } .phase-track { display:flex; flex-wrap:wrap; gap:8px; }
+    .phase { padding:7px 11px; border-radius:999px; background:#101b2c; color:var(--muted); font-size:.9rem; } .phase.active { background:var(--accent); color:#172033; font-weight:bold; } .panel { background:rgba(23,36,59,.94); border:1px solid #405571; border-radius:16px; padding:20px; box-shadow:0 12px 40px #0004; }
+    .notice { background:#243856; border-left:4px solid var(--accent); border-radius:8px; padding:12px; margin:0 0 18px; } .players { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; }
+    .player-box { border:1px solid #4c5f7a; border-radius:12px; padding:14px; } .p1 { border-color:var(--p1); } .p2 { border-color:var(--p2); } .player-box h3 { margin-bottom:8px; } .counter { font-size:1.25rem; font-weight:bold; }
+    .card-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px; } .item-card { text-align:left; min-height:124px; border-left:10px solid var(--card); display:flex; flex-direction:column; justify-content:space-between; } .item-card strong { font-size:1.05rem; } .item-card small { color:#d4def0; line-height:1.35; }
+    .swatch { display:inline-block; width:13px; height:13px; background:var(--card); border-radius:50%; margin-right:7px; vertical-align:-1px; } .stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin:12px 0; } .stat { background:#101c2e; border-radius:8px; padding:8px; text-align:center; } .stat b { display:block; font-size:1.2rem; color:#fff; } .subtle { font-size:.9rem; color:var(--muted); }
+    .choice { display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:18px 0; } .choice button { min-width:190px; font-size:1.15rem; padding:18px; } .choice .land { background:#396d44; } .choice .ocean { background:#276d91; }
+    .build-layout { display:grid; grid-template-columns:minmax(250px,.9fr) minmax(320px,1.5fr); gap:18px; } .monster-tabs { display:flex; flex-wrap:wrap; gap:8px; } .monster-tab { position:relative; min-width:96px; } .monster-tab.selected { border-color:var(--accent); box-shadow:0 0 0 2px #ffd15c55; } .monster-tab.invalid { border-color:#e98686; }
+    .allocation-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(155px,1fr)); gap:8px; margin-top:14px; } .allocation { display:flex; justify-content:space-between; align-items:center; border-left:8px solid var(--card); background:#101c2e; border-radius:8px; padding:7px; }
+    .alloc-controls { display:flex; gap:5px; } .alloc-controls button { padding:4px 9px; } .monster-preview { min-height:144px; border:1px dashed #61738e; border-radius:12px; padding:14px; margin-top:14px; display:flex; gap:16px; align-items:center; }
+    .monster { width:76px; height:76px; flex:0 0 76px; border-radius:48% 52% 43% 57%; background:var(--monster,#536); border:4px solid #dbe7ff; position:relative; box-shadow:inset 0 -10px #0003; } .monster::before,.monster::after { content:""; position:absolute; top:25px; width:12px; height:12px; border-radius:50%; background:var(--eyes); box-shadow:0 0 10px var(--eyes); } .monster::before { left:17px; } .monster::after { right:17px; }
+    .actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:18px; } .primary { background:#bd7b22; border-color:#ffd36e; color:#fff; font-weight:bold; } .danger { background:#6e3038; }
+    .arena-wrap { overflow:auto; padding:8px 0; } .arena { width:min(90vw,630px); min-width:400px; aspect-ratio:1; display:grid; grid-template-columns:repeat(9,1fr); border:3px solid #d0ab59; margin:auto; background:#b78849; } .cell { min-width:0; min-height:0; border:1px solid #6f512c; position:relative; background:linear-gradient(135deg,#c6a063,#ad8047); } .cell:nth-child(odd) { background:linear-gradient(135deg,#d2b276,#b68b52); } .cell .monster { position:absolute; width:74%; height:74%; min-width:25px; min-height:25px; left:13%; top:13%; border-width:2px; }
+    .battle-info { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:14px; margin-bottom:16px; } .battle-info .player-box { min-height:160px; } kbd { display:inline-block; background:#0b1320; border:1px solid #8496b3; border-radius:4px; padding:1px 5px; color:white; font-family:inherit; }
+    .winner { text-align:center; font-size:1.4rem; color:#ffe184; font-weight:bold; padding:14px; } .hidden { display:none; } .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+    @media (max-width:700px) { .players,.battle-info,.build-layout { grid-template-columns:1fr; } main { padding:18px 11px 35px; } .panel { padding:15px; } .arena { min-width:330px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline"><a href="index.html" style="color:#d4e4ff">← All games</a><button id="restart" type="button">New game</button></div>
+    <h1>Monster Battle</h1>
+    <p style="text-align:center">Draft creatures, win the terrain vote, build a roster, then destroy every opposing monster.</p>
+    <nav class="phase-track" aria-label="Game phases"><span class="phase" data-phase="buying">1. Buying</span><span class="phase" data-phase="choosing">2. Choosing</span><span class="phase" data-phase="building">3. Building</span><span class="phase" data-phase="battle">4. Battle</span></nav>
+    <section id="game" class="panel" aria-live="polite"></section>
+  </main>
+  <script>
+    (() => {
+      const ITEMS = [
+        {id:'green', name:'Green', color:'#53b75b', text:'+2 attack on Land'},
+        {id:'brown', name:'Brown', color:'#95613a', text:'+6 life on Land'},
+        {id:'blue', name:'Dark blue', color:'#246fca', text:'+2 attack on Ocean'},
+        {id:'lightblue', name:'Light blue', color:'#67cdeb', text:'+6 life on Ocean'},
+        {id:'black', name:'Black', color:'#20232b', text:'+1 attack anywhere; each pair: +1 vote'},
+        {id:'pink', name:'Pink', color:'#ed7caf', text:'+1 vote; each pair: +1 attack'},
+        {id:'yellow', name:'Yellow', color:'#f2c43e', text:'Every 4: +4 votes; each pair: +1 heart'},
+        {id:'red', name:'Red', color:'#dc4c4c', text:'+3 life; every 3: +1 heart'}
+      ];
+      const item = id => ITEMS.find(x => x.id === id);
+      const blank = () => Object.fromEntries(ITEMS.map(x => [x.id, 0]));
+      const state = { phase:'buying', picks:[blank(),blank()], buyTurn:0, terrain:null, buildPlayer:0, monsters:[[],[]], selected:0, battle:null };
+      const game = document.querySelector('#game');
+      const count = (bag, id) => bag[id] || 0;
+      const total = bag => ITEMS.reduce((n,x) => n + count(bag,x.id), 0);
+      const votes = bag => count(bag,'pink') + Math.floor(count(bag,'black') / 2) + Math.floor(count(bag,'yellow') / 4) * 4;
+      const terrainName = () => state.terrain === 'both' ? 'Both — Land and Ocean' : state.terrain;
+      function stats(bag) {
+        const land = state.terrain === 'land' || state.terrain === 'both';
+        const ocean = state.terrain === 'ocean' || state.terrain === 'both';
+        return {
+          attack: count(bag,'black') + Math.floor(count(bag,'pink') / 2) + (land ? count(bag,'green') * 2 : 0) + (ocean ? count(bag,'blue') * 2 : 0),
+          life: count(bag,'red') * 3 + (land ? count(bag,'brown') * 6 : 0) + (ocean ? count(bag,'lightblue') * 6 : 0),
+          hearts: Math.floor(count(bag,'yellow') / 2) + Math.floor(count(bag,'red') / 3)
+        };
+      }
+      function gradient(bag) {
+        const colors = ITEMS.flatMap(x => Array(Math.max(0,count(bag,x.id))).fill(x.color));
+        return colors.length ? `conic-gradient(${colors.map((c,i) => `${c} ${i/colors.length*100}% ${(i+1)/colors.length*100}%`).join(',')})` : '#465873';
+      }
+      function monsterMarkup(bag, p, label='Monster') { return `<span class="monster" role="img" aria-label="${label}" style="--monster:${gradient(bag)};--eyes:${p ? '#b783ff' : '#ff9b3d'}"></span>`; }
+      function updateTrack() { document.querySelectorAll('.phase').forEach(e => e.classList.toggle('active', e.dataset.phase === state.phase)); }
+      function playerSummary(p) { const bag=state.picks[p]; return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><div class="counter">${total(bag)} / 20 items</div><div class="stats"><div class="stat"><b>${votes(bag)}</b>votes</div><div class="stat"><b>${count(bag,'yellow') ? Math.floor(count(bag,'yellow')/2) : 0}</b>yellow hearts</div><div class="stat"><b>${count(bag,'red') ? Math.floor(count(bag,'red')/3) : 0}</b>red hearts</div></div></div>`; }
+      function renderBuying() {
+        const p=state.buyTurn, canPick=total(state.picks[p]) < 20;
+        game.innerHTML = `<h2>Buying</h2><div class="notice"><strong>Player ${p+1}'s pick.</strong> Players alternate one item at a time. Each must draft exactly 20. Votes are counted now: pink +1 each, black pairs +1, yellow groups of four +4.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><h3>Choose one unlimited item card</h3><div class="card-grid">${ITEMS.map(x => `<button class="item-card" data-buy="${x.id}" style="--card:${x.color}" ${canPick?'':'disabled'}><strong><span class="swatch" style="--card:${x.color}"></span>${x.name}</strong><small>${x.text}</small></button>`).join('')}</div>`;
+        game.querySelectorAll('[data-buy]').forEach(b => b.onclick=() => buy(b.dataset.buy));
+      }
+      function buy(id) {
+        const p=state.buyTurn; if (total(state.picks[p]) >= 20) return;
+        state.picks[p][id]++; const other=1-p;
+        if (total(state.picks[other]) < 20) state.buyTurn=other;
+        else if (total(state.picks[p]) < 20) state.buyTurn=p;
+        else { state.phase='choosing'; }
+        render();
+      }
+      function renderChoosing() {
+        const a=votes(state.picks[0]), b=votes(state.picks[1]);
+        if (a === b) { state.terrain='both'; game.innerHTML=`<h2>Choosing</h2><div class="notice"><strong>It is a ${a}–${b} tie.</strong> Both terrain bonuses apply to every monster: Land and Ocean.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><div class="actions"><button class="primary" id="continue">Continue to Building</button></div>`; document.querySelector('#continue').onclick=() => { state.phase='building'; render(); }; return; }
+        const winner=a>b?0:1;
+        game.innerHTML=`<h2>Choosing</h2><div class="notice"><strong>Player ${winner+1} won the vote (${Math.max(a,b)} to ${Math.min(a,b)}).</strong> Choose the terrain. It affects every monster's item bonuses.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><div class="choice"><button class="land" data-terrain="land">Choose Land<br><small>Green attack + Brown life</small></button><button class="ocean" data-terrain="ocean">Choose Ocean<br><small>Dark blue attack + Light blue life</small></button></div>`;
+        game.querySelectorAll('[data-terrain]').forEach(b => b.onclick=() => { state.terrain=b.dataset.terrain; state.phase='building'; render(); });
+      }
+      function allocated(p) { const out=blank(); state.monsters[p].forEach(m => ITEMS.forEach(x => out[x.id]+=count(m,x.id))); return out; }
+      function valid(bag) { const s=stats(bag); return s.hearts>=1 && s.attack>=1 && s.life>=1; }
+      function renderBuilding() {
+        const p=state.buildPlayer, roster=state.monsters[p], selected=roster[state.selected], used=allocated(p), remaining=Object.fromEntries(ITEMS.map(x=>[x.id,count(state.picks[p],x.id)-count(used,x.id)]));
+        const selectedStats=stats(selected);
+        game.innerHTML=`<h2>Building — Player ${p+1}</h2><div class="notice"><strong>Terrain: ${terrainName()}.</strong> Allocate your 20 drafted items among up to five monsters. Only valid monsters enter battle: at least <b>1 heart, 1 attack, and 1 life</b>. Unused items are allowed; invalid allocations are not alive.</div>
+          <div class="build-layout"><section><h3>Your monster roster</h3><div class="monster-tabs">${roster.map((m,i)=>`<button class="monster-tab ${i===state.selected?'selected':''} ${valid(m)?'':'invalid'}" data-select="${i}">${monsterMarkup(m,p,`Monster ${i+1}`)}<br>Monster ${i+1}<br><small>${valid(m)?'ready':'invalid'}</small></button>`).join('')}</div>
+          <div class="actions"><button id="add-monster" ${roster.length>=5?'disabled':''}>Add monster</button></div><div class="monster-preview">${monsterMarkup(selected,p,'Selected monster')}<div><h3>Monster ${state.selected+1} ${valid(selected)?'— Ready':'— Not battle-ready'}</h3>${statMarkup(selectedStats)}<span class="subtle">Colors are made from every allocated item.</span></div></div></section>
+          <section><h3>Allocate to Monster ${state.selected+1}</h3><p class="subtle">Click + to move an available draft item to this monster; − returns it to your supply.</p><div class="allocation-list">${ITEMS.map(x=>`<div class="allocation" style="--card:${x.color}"><span><b>${x.name}</b><br><small>${count(selected,x.id)} allocated · ${remaining[x.id]} free</small></span><span class="alloc-controls"><button aria-label="Remove ${x.name}" data-remove="${x.id}" ${count(selected,x.id)?'':'disabled'}>−</button><button aria-label="Add ${x.name}" data-add="${x.id}" ${remaining[x.id]?'':'disabled'}>+</button></span></div>`).join('')}</div></section></div>
+          <div class="actions"><button class="primary" id="finish-build" ${roster.some(valid)?'':'disabled'}>${p ? 'Start Battle' : 'Player 2: Build your roster →'}</button></div>`;
+        game.querySelectorAll('[data-select]').forEach(b=>b.onclick=()=>{state.selected=+b.dataset.select;render();});
+        game.querySelector('#add-monster').onclick=()=>{ if(roster.length<5){roster.push(blank());state.selected=roster.length-1;render();} };
+        game.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>{const id=b.dataset.add;if(remaining[id]){selected[id]++;render();}});
+        game.querySelectorAll('[data-remove]').forEach(b=>b.onclick=()=>{const id=b.dataset.remove;if(selected[id]){selected[id]--;render();}});
+        game.querySelector('#finish-build').onclick=finishBuilding;
+      }
+      function statMarkup(s) { return `<div class="stats"><div class="stat"><b>${s.hearts}</b>hearts</div><div class="stat"><b>${s.attack}</b>attack</div><div class="stat"><b>${s.life}</b>life</div></div>`; }
+      function finishBuilding() { if(!state.monsters[state.buildPlayer].some(valid)) return; if(state.buildPlayer===0){state.buildPlayer=1;state.selected=0;state.monsters[1]=[blank()];render();} else startBattle(); }
+      function startBattle() {
+        const rosters=state.monsters.map(r=>r.filter(valid).map(bag=>({...stats(bag),bag})));
+        state.phase='battle'; state.battle={rosters, indices:[0,0], positions:[{r:0,c:0},{r:8,c:8}], attackCooldown:[0,0], defendCooldown:[0,0], defending:[0,0], winner:null};
+        render(); state.battle.timer=setInterval(renderBattle, 125);
+      }
+      function active(p) { const b=state.battle; return b.rosters[p][b.indices[p]]; }
+      function timeLeft(stamp) { return Math.max(0, (stamp-Date.now())/1000); }
+      function renderBattle() {
+        if(state.phase!=='battle') return; const b=state.battle, now=Date.now(), occupied=(r,c)=>b.positions.findIndex(pos=>pos.r===r&&pos.c===c);
+        const cells=Array.from({length:81},(_,i)=>{const r=Math.floor(i/9),c=i%9,p=occupied(r,c); return `<div class="cell">${p<0?'':monsterMarkup(active(p).bag,p,`Player ${p+1} monster`)}</div>`;}).join('');
+        const playerInfo=p=>{const m=active(p), attackCd=timeLeft(b.attackCooldown[p]), defendCd=timeLeft(b.defendCooldown[p]), defending=timeLeft(b.defending[p]); return `<div class="player-box p${p+1}"><h3>Player ${p+1} — Monster ${b.indices[p]+1}/${b.rosters[p].length}</h3>${statMarkup(m)}<div><b>Attack:</b> ${attackCd?`${attackCd.toFixed(1)}s cooldown`:'ready'} · <b>Defend:</b> ${defending?`ACTIVE ${defending.toFixed(1)}s`:defendCd?`${defendCd.toFixed(1)}s cooldown`:'ready'}</div><p class="subtle">${p===0?'<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Left Shift</kbd> attack · <kbd>1</kbd> defend':'Arrow keys move · <kbd>Right Shift</kbd> attack · <kbd>0</kbd> defend'}</p></div>`;};
+        game.innerHTML=`<h2>Battle — Gold Rush Arena</h2><div class="notice">Move on the 9×9 grid. Attack an adjacent enemy (Manhattan distance 1) for your attack value. Defend blocks attacks for one second. Attack and defend each recharge in 5 seconds.</div><div class="battle-info">${playerInfo(0)}${playerInfo(1)}</div><div class="arena-wrap"><div class="arena" role="img" aria-label="Nine by nine monster battle grid">${cells}</div></div>${b.winner!==null?`<div class="winner">Player ${b.winner+1} wins — all opposing monsters were destroyed!</div>`:''}`;
+      }
+      function move(p, dr, dc) { const b=state.battle;if(!b||b.winner!==null)return;const old=b.positions[p], next={r:old.r+dr,c:old.c+dc}, foe=b.positions[1-p];if(next.r<0||next.r>8||next.c<0||next.c>8||(next.r===foe.r&&next.c===foe.c))return;b.positions[p]=next;renderBattle(); }
+      function attack(p) { const b=state.battle;if(!b||b.winner!==null||timeLeft(b.attackCooldown[p]))return; b.attackCooldown[p]=Date.now()+5000; const foe=1-p, a=b.positions[p], d=b.positions[foe]; if(Math.abs(a.r-d.r)+Math.abs(a.c-d.c)<=1 && !timeLeft(b.defending[foe])) { active(foe).life-=active(p).attack; if(active(foe).life<=0) defeat(foe); } renderBattle(); }
+      function defend(p) { const b=state.battle;if(!b||b.winner!==null||timeLeft(b.defendCooldown[p]))return;b.defendCooldown[p]=Date.now()+5000;b.defending[p]=Date.now()+1000;renderBattle(); }
+      function defeat(p) { const b=state.battle;b.indices[p]++; if(b.indices[p]>=b.rosters[p].length){b.winner=1-p;clearInterval(b.timer);return;} b.positions[p]=p?{r:8,c:8}:{r:0,c:0}; }
+      window.addEventListener('keydown', e => { if(state.phase!=='battle'||state.battle.winner!==null)return; const key=e.key, code=e.code, moveKey=e.key.length===1?e.key.toLowerCase():e.key; const movement={w:[0,-1,0],a:[0,0,-1],s:[0,1,0],d:[0,0,1],ArrowUp:[1,-1,0],ArrowDown:[1,1,0],ArrowLeft:[1,0,-1],ArrowRight:[1,0,1]}; if(movement[moveKey]){e.preventDefault();const [p,r,c]=movement[moveKey];move(p,r,c);return;} if(code==='ShiftLeft'){e.preventDefault();if(!e.repeat)attack(0);} if(code==='ShiftRight'){e.preventDefault();if(!e.repeat)attack(1);} if(key==='1'){e.preventDefault();if(!e.repeat)defend(0);} if(key==='0'){e.preventDefault();if(!e.repeat)defend(1);} });
+      function render() { updateTrack(); if(state.phase==='buying')renderBuying(); else if(state.phase==='choosing')renderChoosing(); else if(state.phase==='building')renderBuilding(); else renderBattle(); }
+      document.querySelector('#restart').onclick=()=>{if(state.battle?.timer)clearInterval(state.battle.timer);Object.assign(state,{phase:'buying',picks:[blank(),blank()],buyTurn:0,terrain:null,buildPlayer:0,monsters:[[blank()],[]],selected:0,battle:null});render();};
+      state.monsters[0]=[blank()]; render();
+    })();
+  </script>
+</body>
+</html>
