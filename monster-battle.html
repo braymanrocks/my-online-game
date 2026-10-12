@@ -73,15 +73,14 @@
       function playerSummary(p) { const bag=state.picks[p]; return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><div class="counter">${total(bag)} / 20 items</div><div class="stats"><div class="stat"><b>${votes(bag)}</b>votes</div><div class="stat"><b>${count(bag,'yellow') ? Math.floor(count(bag,'yellow')/2) : 0}</b>yellow hearts</div><div class="stat"><b>${count(bag,'red') ? Math.floor(count(bag,'red')/3) : 0}</b>red hearts</div></div></div>`; }
       function renderBuying() {
         const p=state.buyTurn, canPick=total(state.picks[p]) < 20;
-        game.innerHTML = `<h2>Buying</h2><div class="notice"><strong>Player ${p+1}'s pick.</strong> Players alternate one item at a time. Each must draft exactly 20. Votes are counted now: pink +1 each, black pairs +1, yellow groups of four +4.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><h3>Choose one unlimited item card</h3><div class="card-grid">${ITEMS.map(x => `<button class="item-card" data-buy="${x.id}" style="--card:${x.color}" ${canPick?'':'disabled'}><strong><span class="swatch" style="--card:${x.color}"></span>${x.name}</strong><small>${x.text}</small></button>`).join('')}</div>`;
+        game.innerHTML = `<h2>Buying</h2><div class="notice"><strong>Player ${p+1}'s picks.</strong> Player 1 drafts all 20 items first, then Player 2 drafts all 20 items. Votes are counted now: pink +1 each, black pairs +1, yellow groups of four +4.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><h3>Choose one unlimited item card</h3><div class="card-grid">${ITEMS.map(x => `<button class="item-card" data-buy="${x.id}" style="--card:${x.color}" ${canPick?'':'disabled'}><strong><span class="swatch" style="--card:${x.color}"></span>${x.name}</strong><small>${x.text}</small></button>`).join('')}</div>`;
         game.querySelectorAll('[data-buy]').forEach(b => b.onclick=() => buy(b.dataset.buy));
       }
       function buy(id) {
         const p=state.buyTurn; if (total(state.picks[p]) >= 20) return;
-        state.picks[p][id]++; const other=1-p;
-        if (total(state.picks[other]) < 20) state.buyTurn=other;
-        else if (total(state.picks[p]) < 20) state.buyTurn=p;
-        else { state.phase='choosing'; }
+        state.picks[p][id]++;
+        if (p === 0 && total(state.picks[0]) === 20) state.buyTurn=1;
+        else if (p === 1 && total(state.picks[1]) === 20) state.phase='choosing';
         render();
       }
       function renderChoosing() {
