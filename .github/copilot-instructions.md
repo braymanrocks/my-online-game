@@ -24,3 +24,5 @@ word scramble
 dinosaur jump
 
 monster battle
+
+typing race

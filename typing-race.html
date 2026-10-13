@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Typing Race | My Online Game</title>
+    <style>
+      :root { color-scheme: dark; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { align-items: center; background: radial-gradient(circle at top, #3e3478, #10172b 65%); color: #f8fbff; display: flex; justify-content: center; margin: 0; min-height: 100vh; padding: 24px; }
+      main { max-width: 860px; width: 100%; }
+      a { color: #ffd45d; }
+      h1 { font-size: clamp(2.6rem, 8vw, 4.8rem); letter-spacing: -.06em; margin: 18px 0 4px; text-align: center; }
+      .intro { color: #c8d5f0; margin: 0 0 22px; text-align: center; }
+      .panel { background: rgba(20, 31, 58, .9); border: 1px solid rgba(255, 255, 255, .18); border-radius: 18px; padding: clamp(18px, 4vw, 30px); }
+      .top { align-items: end; display: flex; flex-wrap: wrap; gap: 14px; justify-content: space-between; margin-bottom: 18px; }
+      .score { background: #101a31; border: 1px solid #536b9d; border-radius: 12px; color: #ffe68d; padding: 12px; }
+      .score strong { display: block; color: #fff; font-size: 1.2rem; margin-top: 4px; }
+      .stats { display: grid; gap: 10px; grid-template-columns: repeat(3, 1fr); margin: 16px 0; }
+      .stat { background: #101a31; border-radius: 10px; padding: 12px; text-align: center; }
+      .stat b { color: #ffd45d; display: block; font-size: 1.5rem; }
+      label { color: #c8d5f0; display: block; font-weight: bold; }
+      input, textarea, button { font: inherit; }
+      input { background: #101a31; border: 1px solid #647da8; border-radius: 8px; color: #fff; margin-left: 8px; padding: 8px; width: 180px; }
+      button { background: #ffd45d; border: 0; border-radius: 8px; color: #332607; cursor: pointer; font-weight: bold; padding: 11px 16px; }
+      button:hover, button:focus-visible { background: #fff0aa; outline: 3px solid #fff; outline-offset: 2px; }
+      #passage { background: #101a31; border: 2px solid #3d5278; border-radius: 12px; font-family: Georgia, serif; font-size: clamp(1.1rem, 2.4vw, 1.45rem); letter-spacing: .02em; line-height: 1.75; margin: 14px 0; padding: 20px; }
+      #passage .correct { color: #79e6a2; }
+      #passage .incorrect { background: #b6455d; color: #fff; text-decoration: underline; }
+      #passage .current { border-bottom: 3px solid #ffd45d; }
+      textarea { background: #0b1326; border: 2px solid #647da8; border-radius: 12px; color: #fff; display: block; line-height: 1.5; min-height: 105px; padding: 14px; resize: vertical; width: 100%; }
+      textarea:focus { border-color: #ffd45d; outline: 3px solid #ffd45d55; }
+      textarea:disabled { opacity: .65; }
+      #status { color: #c8d5f0; min-height: 1.5em; }
+      @media (max-width: 550px) { .stats { grid-template-columns: 1fr; } input { display: block; margin: 7px 0 0; width: 100%; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="index.html">&larr; All games</a>
+      <h1>Typing Race</h1>
+      <p class="intro">Type the complete passage as quickly and accurately as you can.</p>
+      <section class="panel" aria-label="Typing Race game">
+        <div class="top">
+          <label>Player name <input id="name" maxlength="20" value="Player" autocomplete="nickname"></label>
+          <div class="score">High score <strong id="high-score">No score yet</strong></div>
+          <button id="restart" type="button">Start race</button>
+        </div>
+        <div class="stats" aria-live="polite">
+          <div class="stat"><b id="time">60</b>seconds</div>
+          <div class="stat"><b id="wpm">0</b>WPM</div>
+          <div class="stat"><b id="accuracy">100%</b>accuracy</div>
+        </div>
+        <p id="passage" aria-label="Passage to type"></p>
+        <label for="typing">Type the passage</label>
+        <textarea id="typing" disabled spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="status"></textarea>
+        <p id="status" role="status">Press Start race to begin. Your best WPM is saved on this device.</p>
+      </section>
+    </main>
+    <script>
+      const PASSAGE = "A quick explorer crossed the bright valley at sunrise. Every careful step revealed a new trail, a hidden stream, and a chance to learn something useful. Fast fingers can win this race, but accurate typing makes every word count.";
+      const RACE_SECONDS = 60;
+      const highScoreElement = document.querySelector("#high-score");
+      const nameElement = document.querySelector("#name");
+      const passageElement = document.querySelector("#passage");
+      const restartButton = document.querySelector("#restart");
+      const statusElement = document.querySelector("#status");
+      const typingElement = document.querySelector("#typing");
+      const timeElement = document.querySelector("#time");
+      const wpmElement = document.querySelector("#wpm");
+      const accuracyElement = document.querySelector("#accuracy");
+      let startedAt = 0;
+      let timer;
+
+      function getHighScore() {
+        try { return JSON.parse(localStorage.getItem("typing-race-high-score")) || null; } catch { return null; }
+      }
+
+      function renderHighScore() {
+        const score = getHighScore();
+        highScoreElement.textContent = score ? `${score.name}: ${score.wpm} WPM` : "No score yet";
+      }
+
+      function renderPassage() {
+        const typed = typingElement.value;
+        passageElement.replaceChildren(...PASSAGE.split("").map((character, index) => {
+          const span = document.createElement("span");
+          span.textContent = character;
+          if (index < typed.length) span.className = typed[index] === character ? "correct" : "incorrect";
+          else if (index === typed.length) span.className = "current";
+          return span;
+        }));
+      }
+
+      function measurements() {
+        const typed = typingElement.value;
+        const correct = [...typed].filter((character, index) => character === PASSAGE[index]).length;
+        const elapsedMinutes = Math.max((Date.now() - startedAt) / 60000, 1 / 60000);
+        return { correct, wpm: Math.round((correct / 5) / elapsedMinutes), accuracy: typed.length ? Math.round((correct / typed.length) * 100) : 100 };
+      }
+
+      function updateStats() {
+        const elapsed = Math.min(RACE_SECONDS, Math.floor((Date.now() - startedAt) / 1000));
+        const { wpm, accuracy } = measurements();
+        timeElement.textContent = RACE_SECONDS - elapsed;
+        wpmElement.textContent = wpm;
+        accuracyElement.textContent = `${accuracy}%`;
+        if (elapsed >= RACE_SECONDS) finishRace(false);
+      }
+
+      function finishRace(completed) {
+        if (!timer) return;
+        clearInterval(timer);
+        timer = null;
+        typingElement.disabled = true;
+        const { wpm, accuracy } = measurements();
+        const currentHigh = getHighScore();
+        const name = nameElement.value.trim() || "Player";
+        if (!currentHigh || wpm > currentHigh.wpm) {
+          localStorage.setItem("typing-race-high-score", JSON.stringify({ name, wpm }));
+          renderHighScore();
+          statusElement.textContent = `New high score: ${wpm} WPM at ${accuracy}% accuracy!`;
+        } else {
+          statusElement.textContent = `${completed ? "Passage complete!" : "Time is up!"} ${wpm} WPM at ${accuracy}% accuracy.`;
+        }
+        restartButton.textContent = "Race again";
+      }
+
+      function startRace() {
+        clearInterval(timer);
+        typingElement.value = "";
+        typingElement.disabled = false;
+        startedAt = Date.now();
+        timeElement.textContent = RACE_SECONDS;
+        wpmElement.textContent = "0";
+        accuracyElement.textContent = "100%";
+        statusElement.textContent = "Go! Type the whole passage.";
+        restartButton.textContent = "Restart race";
+        renderPassage();
+        typingElement.focus();
+        timer = setInterval(updateStats, 200);
+      }
+
+      typingElement.addEventListener("input", () => {
+        if (typingElement.value.length > PASSAGE.length) typingElement.value = typingElement.value.slice(0, PASSAGE.length);
+        renderPassage();
+        updateStats();
+        if (typingElement.value === PASSAGE) finishRace(true);
+      });
+      restartButton.addEventListener("click", startRace);
+      renderPassage();
+      renderHighScore();
+    </script>
+  </body>
+</html>
