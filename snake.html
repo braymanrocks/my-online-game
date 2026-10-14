@@ -44,7 +44,7 @@
   <script>
     const canvas = document.querySelector("#board"), ctx = canvas.getContext("2d"), size = 20;
     const scoreOneEl = document.querySelector("#score-one"), scoreTwoEl = document.querySelector("#score-two"), playerTwoScoreEl = document.querySelector("#player-two-score"), status = document.querySelector("#status");
-    let players, food, timer, playing, twoPlayer, explosion;
+    let players, food, timer, playing, twoPlayer, explosion, gameOver;
     const speeds = { easy: 180, medium: 115, hard: 70 };
     function occupied(x, y) { return players.some(player => player.snake.some(part => part.x === x && part.y === y)); }
     function randomFood() { do { food = { x: Math.floor(Math.random() * size), y: Math.floor(Math.random() * size) }; } while (occupied(food.x, food.y)); }
@@ -55,13 +55,13 @@
       players.forEach((player, playerIndex) => player.snake.forEach((part, index) => { ctx.fillStyle = index ? player.color : player.headColor; ctx.fillRect(part.x * 20 + 2, part.y * 20 + 2, 16, 16); }));
       if (explosion) { ctx.fillStyle = "#fff2a5"; for (let i = 0; i < 10; i++) { const angle = (Math.PI * 2 * i) / 10; ctx.fillRect(explosion.x * 20 + 8 + Math.cos(angle) * 21, explosion.y * 20 + 8 + Math.sin(angle) * 21, 7, 7); } ctx.fillStyle = "#ff5f6d"; ctx.fillRect(explosion.x * 20 + 3, explosion.y * 20 + 3, 14, 14); }
     }
-    function finish(playerIndex, message, hitSide) { playing = false; clearInterval(timer); explosion = hitSide ? players[playerIndex].snake[0] : null; draw(); const winner = twoPlayer ? `Player ${playerIndex === 0 ? 2 : 1} wins!` : "Game over!"; status.textContent = `${winner} ${message}`; }
+    function finish(playerIndex, message, exploded=false, impact=players[playerIndex].snake[0]) { playing = false; gameOver = true; clearInterval(timer); explosion = exploded ? { x:Math.max(0,Math.min(size-1,impact.x)), y:Math.max(0,Math.min(size-1,impact.y)) } : null; draw(); const winner = twoPlayer ? `Player ${playerIndex === 0 ? 2 : 1} wins!` : "Game over!"; status.textContent = `${winner} ${message} Press Restart to play again.`; }
     function step() {
       const heads = players.map(player => ({ x: player.snake[0].x + player.nextDirection.x, y: player.snake[0].y + player.nextDirection.y }));
       for (let index = 0; index < players.length; index++) {
         const head = heads[index], player = players[index];
-        if (head.x < 0 || head.y < 0 || head.x >= size || head.y >= size) { finish(index, "The snake exploded on the side of the board!", true); return; }
-        if (occupied(head.x, head.y) || heads.some((otherHead, otherIndex) => otherIndex !== index && otherHead.x === head.x && otherHead.y === head.y)) { finish(index, "The snake crashed!", false); return; }
+        if (head.x < 0 || head.y < 0 || head.x >= size || head.y >= size) { finish(index, "The snake exploded on the side of the board!", true, head); return; }
+        if (occupied(head.x, head.y) || heads.some((otherHead, otherIndex) => otherIndex !== index && otherHead.x === head.x && otherHead.y === head.y)) { finish(index, "The snake exploded after crashing into a snake!", true, head); return; }
         player.direction = player.nextDirection;
       }
       let ate = false;
@@ -73,8 +73,8 @@
       if (ate) randomFood();
       draw();
     }
-    function start() { if (!playing) { playing = true; status.textContent = "Go!"; timer = setInterval(step, speeds[document.querySelector('input[name="difficulty"]:checked').value]); } }
-    function reset() { clearInterval(timer); twoPlayer = document.querySelector('input[name="mode"]:checked').value === "two-player"; players = [{ snake:[{x:4,y:10},{x:3,y:10},{x:2,y:10}], direction:{x:1,y:0}, nextDirection:{x:1,y:0}, score:0, color:"#64dca5", headColor:"#ffcf3f" }]; if (twoPlayer) players.push({ snake:[{x:15,y:10},{x:16,y:10},{x:17,y:10}], direction:{x:-1,y:0}, nextDirection:{x:-1,y:0}, score:0, color:"#b783ff", headColor:"#ead8ff" }); playing = false; explosion = null; scoreOneEl.textContent = "0"; scoreTwoEl.textContent = "0"; playerTwoScoreEl.classList.toggle("hidden", !twoPlayer); randomFood(); draw(); status.textContent = twoPlayer ? "Player 1 uses W A S D. Player 2 uses arrow keys. First to 10 wins!" : "Press W, A, S, or D to start."; canvas.focus(); }
+    function start() { if (!playing && !gameOver) { playing = true; status.textContent = "Go!"; timer = setInterval(step, speeds[document.querySelector('input[name="difficulty"]:checked').value]); } }
+    function reset() { clearInterval(timer); twoPlayer = document.querySelector('input[name="mode"]:checked').value === "two-player"; players = [{ snake:[{x:4,y:10},{x:3,y:10},{x:2,y:10}], direction:{x:1,y:0}, nextDirection:{x:1,y:0}, score:0, color:"#64dca5", headColor:"#ffcf3f" }]; if (twoPlayer) players.push({ snake:[{x:15,y:10},{x:16,y:10},{x:17,y:10}], direction:{x:-1,y:0}, nextDirection:{x:-1,y:0}, score:0, color:"#b783ff", headColor:"#ead8ff" }); playing = false; gameOver = false; explosion = null; scoreOneEl.textContent = "0"; scoreTwoEl.textContent = "0"; playerTwoScoreEl.classList.toggle("hidden", !twoPlayer); randomFood(); draw(); status.textContent = twoPlayer ? "Player 1 uses W A S D. Player 2 uses arrow keys. First to 10 wins!" : "Press W, A, S, or D to start."; canvas.focus(); }
     document.addEventListener("keydown", e => { const moves = { w:[0,0,-1], W:[0,0,-1], s:[0,0,1], S:[0,0,1], a:[0,-1,0], A:[0,-1,0], d:[0,1,0], D:[0,1,0], ArrowUp:[1,0,-1], ArrowDown:[1,0,1], ArrowLeft:[1,-1,0], ArrowRight:[1,1,0] }, move = moves[e.key]; if (!move || (!twoPlayer && move[0] === 1)) return; e.preventDefault(); const [playerIndex, x, y] = move, player = players[playerIndex]; if (x !== -player.direction.x || y !== -player.direction.y) player.nextDirection = {x,y}; start(); });
     document.querySelector("#restart").addEventListener("click", reset); reset();
   </script>
