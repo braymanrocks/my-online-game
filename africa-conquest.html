@@ -115,6 +115,7 @@
       let selectedTarget = null;
       let botEnabled = false;
       let gameOver = false;
+      let blueOpeningTurn = true;
 
       function playerName(player) { return botEnabled && player === 1 ? "Bot" : player === 0 ? "Blue player" : "Red player"; }
       function ownerName(player) { return player === 0 ? "Blue" : "Red"; }
@@ -172,7 +173,8 @@
 
       function startTurn() {
         phase = "deploy";
-        reinforcements = ownedTerritories(currentPlayer).length;
+        reinforcements = currentPlayer === 0 && blueOpeningTurn ? 3 : ownedTerritories(currentPlayer).length;
+        blueOpeningTurn = false;
         selectedSource = null;
         selectedTarget = null;
         setStatus(`${playerName(currentPlayer)} has ${reinforcements} reinforcements to deploy.`);
@@ -292,6 +294,7 @@
         shuffled.forEach((territory, index) => { territory.owner = index % 2; territory.armies = 3; });
         currentPlayer = 0;
         gameOver = false;
+        blueOpeningTurn = true;
         startTurn();
       }
 
