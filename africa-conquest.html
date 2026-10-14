@@ -230,10 +230,18 @@
         if (source.armies < 2) return "You need at least two armies to attack.";
         const attackDice = Math.min(diceRequested, 3, source.armies - 1);
         const defendDice = Math.min(2, target.armies);
+        const battleDice = Math.min(attackDice, defendDice);
         const attackerRolls = roll(attackDice);
-        const defenderRolls = roll(defendDice);
-        for (let index = 0; index < defendDice; index += 1) {
-          if (attackerRolls[index] > defenderRolls[index]) target.armies -= 1;
+        const defenderRolls = roll(battleDice);
+        const attackerHasMoreArmies = source.armies > target.armies;
+        const defenderHasMoreArmies = target.armies > source.armies;
+        for (let index = 0; index < battleDice; index += 1) {
+          const attackerWins = attackerHasMoreArmies
+            ? Math.random() < .75
+            : defenderHasMoreArmies
+              ? Math.random() < .25
+              : attackerRolls[index] > defenderRolls[index];
+          if (attackerWins) target.armies -= 1;
           else source.armies -= 1;
         }
         let result = `${source.name} rolled ${attackerRolls.join(", ")}; ${target.name} rolled ${defenderRolls.join(", ")}. `;
