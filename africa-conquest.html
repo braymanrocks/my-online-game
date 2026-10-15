@@ -52,7 +52,7 @@
         <section id="map" aria-label="Africa territory map"></section>
         <aside class="panel">
           <h2 id="turn-title" class="turn blue">Blue player's turn</h2>
-          <p id="status" aria-live="polite">Deploy your reinforcements by selecting one of your territories.</p>
+          <p id="status" aria-live="polite">Blue player: choose an unclaimed territory to place your first troop.</p>
           <div class="stats">
             <div>Phase: <strong id="phase">Deploy</strong></div>
             <div>Reinforcements: <strong id="reinforcements">0</strong></div>
@@ -69,7 +69,7 @@
             <button id="fortify" type="button">Fortify selected territory</button>
             <button id="end-phase" type="button">Finish deployment</button>
           </div>
-          <p class="rules"><strong>How to play:</strong> Click one of your territories, then an adjacent enemy to select an attack. During fortify, select two adjacent territories you own to move all but one army. The attacker needs at least two armies.</p>
+          <p class="rules"><strong>How to play:</strong> Take turns claiming empty territories with one troop each. Then take turns placing troops on your territories until each player has placed 21 troops total. After setup, click one of your territories, then an adjacent enemy to attack. During fortify, select two adjacent territories you own to move all but one army. The attacker needs at least two armies.</p>
         </aside>
       </div>
       <div class="footer-actions">
@@ -93,7 +93,7 @@
         ["Zambia", ["Angola", "Tanzania", "Mozambique", "South Africa"], 57, 74],
         ["Mozambique", ["Tanzania", "Zambia", "South Africa"], 80, 80],
         ["South Africa", ["Angola", "Zambia", "Mozambique"], 61, 90]
-      ].map(([name, neighbors, left, top], index) => ({ name, neighbors, index, left, top, owner: null, armies: 3 }));
+      ].map(([name, neighbors, left, top], index) => ({ name, neighbors, index, left, top, owner: null, armies: 0 }));
 
       const mapElement = document.querySelector("#map");
       const attackButton = document.querySelector("#attack");
@@ -108,21 +108,23 @@
       const restartButton = document.querySelector("#restart");
       const statusElement = document.querySelector("#status");
       const turnTitleElement = document.querySelector("#turn-title");
+      const SETUP_TROOPS_PER_PLAYER = 21;
       let currentPlayer = 0;
-      let phase = "deploy";
+      let phase = "claim";
       let reinforcements = 0;
       let selectedSource = null;
       let selectedTarget = null;
       let botEnabled = false;
       let gameOver = false;
-      let blueOpeningTurn = true;
+      let troopsPlaced = [0, 0];
 
       function playerName(player) { return botEnabled && player === 1 ? "Bot" : player === 0 ? "Blue player" : "Red player"; }
-      function ownerName(player) { return player === 0 ? "Blue" : "Red"; }
+      function ownerName(player) { return player === 0 ? "Blue" : player === 1 ? "Red" : "unclaimed"; }
       function territoryByName(name) { return territories.find((territory) => territory.name === name); }
       function ownedTerritories(player) { return territories.filter((territory) => territory.owner === player); }
       function areNeighbors(first, second) { return first.neighbors.includes(second.name); }
       function roll(count) { return Array.from({ length: count }, () => Math.floor(Math.random() * 6) + 1).sort((a, b) => b - a); }
+      function isSetupPhase() { return phase === "claim" || phase === "setup"; }
 
       function render() {
         mapElement.replaceChildren();
@@ -147,7 +149,7 @@
         mapElement.append(connections);
         territories.forEach((territory) => {
           const button = document.createElement("button");
-          button.className = `territory ${territory.owner === 0 ? "blue" : "red"}${territory === selectedSource || territory === selectedTarget ? " selected" : ""}`;
+          button.className = `territory ${territory.owner === 0 ? "blue" : territory.owner === 1 ? "red" : ""}${territory === selectedSource || territory === selectedTarget ? " selected" : ""}`;
           button.type = "button";
           button.innerHTML = `${territory.name}<span class="army">${territory.armies}</span>`;
           button.style.left = `${territory.left}%`;
@@ -158,23 +160,22 @@
         });
         const blueCount = ownedTerritories(0).length;
         blueCountElement.textContent = blueCount;
-        redCountElement.textContent = territories.length - blueCount;
+        redCountElement.textContent = ownedTerritories(1).length;
         reinforcementsElement.textContent = reinforcements;
         phaseElement.textContent = phase[0].toUpperCase() + phase.slice(1);
         turnTitleElement.textContent = gameOver ? statusElement.textContent : `${playerName(currentPlayer)}'s turn`;
         turnTitleElement.className = `turn ${currentPlayer === 0 ? "blue" : "red"}`;
         attackButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "attack" || !selectedSource || !selectedTarget;
         fortifyButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "fortify" || !selectedSource || !selectedTarget;
-        endPhaseButton.disabled = gameOver || currentPlayer === 1 && botEnabled;
-        endPhaseButton.textContent = phase === "deploy" ? "Finish deployment" : phase === "attack" ? "Go to fortify" : "End turn";
+        endPhaseButton.disabled = gameOver || currentPlayer === 1 && botEnabled || isSetupPhase();
+        endPhaseButton.textContent = phase === "deploy" ? "Finish deployment" : phase === "attack" ? "Go to fortify" : phase === "fortify" ? "End turn" : "Setup in progress";
       }
 
       function setStatus(message) { statusElement.textContent = message; }
 
       function startTurn() {
         phase = "deploy";
-        reinforcements = currentPlayer === 0 && blueOpeningTurn ? 3 : ownedTerritories(currentPlayer).length;
-        blueOpeningTurn = false;
+        reinforcements = ownedTerritories(currentPlayer).length;
         selectedSource = null;
         selectedTarget = null;
         setStatus(`${playerName(currentPlayer)} has ${reinforcements} reinforcements to deploy.`);
@@ -184,8 +185,57 @@
         }
       }
 
+      function continueSetup() {
+        selectedSource = null;
+        selectedTarget = null;
+        if (troopsPlaced.every((count) => count === SETUP_TROOPS_PER_PLAYER)) {
+          currentPlayer = 0;
+          startTurn();
+          return;
+        }
+        currentPlayer = currentPlayer === 0 ? 1 : 0;
+        phase = territories.some((territory) => territory.owner === null) ? "claim" : "setup";
+        reinforcements = SETUP_TROOPS_PER_PLAYER - troopsPlaced[currentPlayer];
+        const action = phase === "claim" ? "claim an empty territory" : "place a troop on one of their territories";
+        setStatus(`${playerName(currentPlayer)} has placed ${troopsPlaced[currentPlayer]} of ${SETUP_TROOPS_PER_PLAYER} troops. Choose a territory to ${action}.`);
+        render();
+        if (botEnabled && currentPlayer === 1) window.setTimeout(runBotSetupTurn, 650);
+      }
+
+      function runBotSetupTurn() {
+        if (!botEnabled || gameOver || currentPlayer !== 1 || !isSetupPhase()) return;
+        const choices = phase === "claim" ? territories.filter((territory) => territory.owner === null) : ownedTerritories(1);
+        const territory = choices[Math.floor(Math.random() * choices.length)];
+        if (phase === "claim") territory.owner = 1;
+        territory.armies += 1;
+        troopsPlaced[1] += 1;
+        reinforcements = SETUP_TROOPS_PER_PLAYER - troopsPlaced[1];
+        setStatus(`Bot placed a troop on ${territory.name}.`);
+        render();
+        window.setTimeout(continueSetup, 450);
+      }
+
       function selectTerritory(territory) {
         if (gameOver || (botEnabled && currentPlayer === 1)) return;
+        if (phase === "claim") {
+          if (territory.owner !== null) { setStatus("Choose an unclaimed territory."); render(); return; }
+          territory.owner = currentPlayer;
+          territory.armies = 1;
+          troopsPlaced[currentPlayer] += 1;
+          reinforcements = SETUP_TROOPS_PER_PLAYER - troopsPlaced[currentPlayer];
+          setStatus(`${playerName(currentPlayer)} claimed ${territory.name}.`);
+          continueSetup();
+          return;
+        }
+        if (phase === "setup") {
+          if (territory.owner !== currentPlayer) { setStatus("Place setup troops only on your own territory."); render(); return; }
+          territory.armies += 1;
+          troopsPlaced[currentPlayer] += 1;
+          reinforcements = SETUP_TROOPS_PER_PLAYER - troopsPlaced[currentPlayer];
+          setStatus(`${playerName(currentPlayer)} placed a troop on ${territory.name}.`);
+          continueSetup();
+          return;
+        }
         if (phase === "deploy") {
           if (territory.owner !== currentPlayer) { setStatus("Choose one of your territories to deploy there."); render(); return; }
           if (reinforcements === 0) { setStatus("Finish deployment before attacking."); render(); return; }
@@ -298,12 +348,16 @@
       }
 
       function newGame() {
-        const shuffled = [...territories].sort(() => Math.random() - .5);
-        shuffled.forEach((territory, index) => { territory.owner = index % 2; territory.armies = 3; });
+        territories.forEach((territory) => { territory.owner = null; territory.armies = 0; });
         currentPlayer = 0;
         gameOver = false;
-        blueOpeningTurn = true;
-        startTurn();
+        phase = "claim";
+        reinforcements = SETUP_TROOPS_PER_PLAYER;
+        troopsPlaced = [0, 0];
+        selectedSource = null;
+        selectedTarget = null;
+        setStatus("Blue player: choose an unclaimed territory to place your first troop.");
+        render();
       }
 
       modeToggleButton.addEventListener("click", () => {
