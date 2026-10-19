@@ -1,20 +1,50 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Reaction Race | My Online Game</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reaction Race | My Online Game</title>
   <style>
-    :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:620px; padding:28px 18px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:22px; } fieldset { border:0; margin:14px 0; padding:0; } label { cursor:pointer; } button { background:#ffcf3f; border:0; border-radius:10px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:11px 17px; } button:focus-visible { outline:3px solid white; outline-offset:3px; }
-    #target { background:#27405f; color:#f8fbff; display:block; font-size:clamp(1.2rem,5vw,1.7rem); height:200px; margin:20px auto; max-width:460px; width:100%; } #target.wait { background:#a1424c; } #target.go { background:#238355; } #status { color:#c8d5f0; min-height:1.5em; }
+    :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:760px; padding:28px 18px 46px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:22px; } button { background:#ffcf3f; border:0; border-radius:10px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:11px 17px; } button:focus-visible { outline:3px solid white; outline-offset:3px; }
+    .controls { color:#c8d5f0; line-height:1.5; margin:14px auto; max-width:620px; } kbd { background:#0b1428; border:1px solid #91a8cb; border-radius:5px; color:#fff; display:inline-block; font:inherit; font-weight:bold; margin:0 2px; min-width:2.1em; padding:4px 7px; } #prompt { align-items:center; background:#27405f; border:3px solid #6d91be; border-radius:16px; display:flex; gap:22px; justify-content:center; margin:20px auto; max-width:470px; min-height:150px; } #arrow { font-size:clamp(4rem,14vw,6.8rem); line-height:1; } #letter { background:#10243e; border:2px solid #cce1ff; border-radius:12px; font-size:clamp(2.5rem,10vw,4.5rem); font-weight:bold; min-width:1.3em; padding:8px 14px; }
+    .scoreboard { display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); margin:16px auto; max-width:620px; } .score { border:2px solid; border-radius:10px; padding:9px; } .score.p1 { border-color:#70c9ff; } .score.p2 { border-color:#ff8e7c; } .score strong { display:block; font-size:1.45rem; } .track { background:repeating-linear-gradient(90deg,#333f51 0 36px,#3d4c61 36px 72px); border:4px solid #dfe8f7; border-radius:13px; margin:20px auto; max-width:660px; overflow:hidden; position:relative; } .finish { background:repeating-conic-gradient(#111 0 25%,#fff 0 50%) 0 / 14px 14px; bottom:0; position:absolute; right:7%; top:0; width:16px; z-index:2; } .lane { border-bottom:2px dashed #a9bacf; height:86px; position:relative; } .lane:last-child { border-bottom:0; } .lane-label { left:9px; position:absolute; top:8px; } .car { font-size:2.8rem; left:4%; line-height:1; position:absolute; top:24px; transition:left 180ms ease-out; z-index:3; } .car.p2 { filter:hue-rotate(135deg); transform:scaleX(-1); } #status { color:#c8d5f0; min-height:1.5em; }
+    @media (max-width:520px) { main { padding:20px 10px 32px; } .panel { padding:15px 10px; } .lane { height:70px; } .car { font-size:2.25rem; top:19px; } }
   </style>
 </head>
-<body><main><a href="index.html">← Back to games</a><h1>Reaction Race</h1><p>Wait for green, then react as quickly as possible across five rounds.</p><section class="panel" aria-label="Reaction Race game">
-  <fieldset><legend>Difficulty</legend><label><input type="radio" name="difficulty" value="easy" checked> Easy</label> <label><input type="radio" name="difficulty" value="medium"> Medium</label> <label><input type="radio" name="difficulty" value="hard"> Hard</label></fieldset>
-  <button id="start" type="button">Start race</button><button id="target" type="button" aria-live="assertive">Press Start</button><p><strong>Round: <span id="round">0</span>/5</strong> · <strong>Best: <span id="best">—</span></strong></p><p id="status" role="status">Choose a difficulty to set the wait window.</p>
-  </section></main><script>
-    const target=document.querySelector("#target"), start=document.querySelector("#start"), roundEl=document.querySelector("#round"), bestEl=document.querySelector("#best"), status=document.querySelector("#status");
-    const waits={easy:[1800,3500],medium:[1000,2600],hard:[500,1500]}; let state="idle",round=0,best=null,timer,goTime;
-    function finish(){state="idle";target.className="";target.textContent="Race complete";start.textContent="Race again";status.textContent=`Finished! Best reaction: ${best} ms.`;}
-    function queue(){const [min,max]=waits[document.querySelector('input[name="difficulty"]:checked').value];state="waiting";target.className="wait";target.textContent="Wait for green…";timer=setTimeout(()=>{state="go";goTime=performance.now();target.className="go";target.textContent="CLICK NOW!";},min+Math.random()*(max-min));}
-    start.addEventListener("click",()=>{clearTimeout(timer);round=0;best=null;roundEl.textContent=round;bestEl.textContent="—";start.textContent="Restart race";status.textContent="Five reactions — wait for green.";queue();});
-    target.addEventListener("click",()=>{if(state==="waiting"){clearTimeout(timer);state="idle";target.className="";target.textContent="Too soon!";status.textContent="False start. Start a new race.";start.textContent="Start race";return;}if(state!=="go")return;const reaction=Math.round(performance.now()-goTime);best=best===null?reaction:Math.min(best,reaction);bestEl.textContent=`${best} ms`;round++;roundEl.textContent=round;status.textContent=`${reaction} ms! ${round<5?"Get ready for the next one.":" "}`;if(round===5)finish();else {state="between";target.className="";target.textContent=`${reaction} ms — click to continue`;target.onclick=()=>{target.onclick=null;queue();};}});
-  </script></body></html>
+<body>
+  <main>
+    <a href="index.html">← Back to games</a>
+    <h1>Reaction Race</h1>
+    <p>Race your opponent by matching the prompt first.</p>
+    <section class="panel" aria-label="Two-player Reaction Race game">
+      <p class="controls"><strong>Player 1:</strong> use <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>. <strong>Player 2:</strong> use the matching arrow key. When the prompt shows <kbd>↑</kbd> and <kbd>W</kbd>, Player 1 presses <kbd>W</kbd> and Player 2 presses <kbd>↑</kbd>.</p>
+      <button id="start" type="button">Start race</button>
+      <div id="prompt" role="status" aria-live="assertive" aria-label="Press Start">
+        <span id="arrow" aria-hidden="true">?</span><span id="letter">?</span>
+      </div>
+      <div class="scoreboard">
+        <div class="score p1">Player 1 moves<strong id="p1-score">0 / 10</strong></div>
+        <div class="score p2">Player 2 moves<strong id="p2-score">0 / 10</strong></div>
+      </div>
+      <div class="track" aria-label="Race track">
+        <div class="finish" aria-label="Finish line"></div>
+        <div class="lane"><span class="lane-label">Player 1</span><span id="p1-car" class="car p1" aria-label="Player 1 car">🏎️</span></div>
+        <div class="lane"><span class="lane-label">Player 2</span><span id="p2-car" class="car p2" aria-label="Player 2 car">🏎️</span></div>
+      </div>
+      <p id="status" role="status">Press Start race to begin. The first player to make 10 correct moves wins.</p>
+    </section>
+  </main>
+  <script>
+    const start=document.querySelector("#start"),arrowEl=document.querySelector("#arrow"),letterEl=document.querySelector("#letter"),p1ScoreEl=document.querySelector("#p1-score"),p2ScoreEl=document.querySelector("#p2-score"),p1Car=document.querySelector("#p1-car"),p2Car=document.querySelector("#p2-car"),status=document.querySelector("#status");
+    const prompts=[{arrow:"↑",letter:"W",p1:"w",p2:"ArrowUp"},{arrow:"←",letter:"A",p1:"a",p2:"ArrowLeft"},{arrow:"↓",letter:"S",p1:"s",p2:"ArrowDown"},{arrow:"→",letter:"D",p1:"d",p2:"ArrowRight"}];
+    const MOVES_TO_WIN=10; let scores=[0,0],currentPrompt,running=false;
+    function updateRace(){p1ScoreEl.textContent=`${scores[0]} / ${MOVES_TO_WIN}`;p2ScoreEl.textContent=`${scores[1]} / ${MOVES_TO_WIN}`;p1Car.style.left=`${4+scores[0]*8.5}%`;p2Car.style.left=`${4+scores[1]*8.5}%`;}
+    function nextPrompt(){currentPrompt=prompts[Math.floor(Math.random()*prompts.length)];arrowEl.textContent=currentPrompt.arrow;letterEl.textContent=currentPrompt.letter;document.querySelector("#prompt").setAttribute("aria-label",`Press ${currentPrompt.letter} or ${currentPrompt.arrow}`);}
+    function finish(player){running=false;arrowEl.textContent="🏁";letterEl.textContent="!";start.textContent="Race again";status.textContent=`Player ${player+1} wins the race with ${MOVES_TO_WIN} moves!`;}
+    function movePlayer(player){if(!running)return;scores[player]+=1;updateRace();if(scores[player]===MOVES_TO_WIN){finish(player);return;}status.textContent=`Player ${player+1} moved forward!`;nextPrompt();}
+    start.addEventListener("click",()=>{scores=[0,0];running=true;start.textContent="Restart race";updateRace();nextPrompt();status.textContent="Go! Match the arrow or letter before your opponent.";});
+    document.addEventListener("keydown",event=>{if(!running||event.repeat)return;const key=event.key.length===1?event.key.toLowerCase():event.key;if(key===currentPrompt.p1){event.preventDefault();movePlayer(0);}else if(key===currentPrompt.p2){event.preventDefault();movePlayer(1);}});
+    updateRace();
+  </script>
+</body>
+</html>
