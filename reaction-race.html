@@ -31,13 +31,13 @@
         <div class="lane"><span class="lane-label">Player 1</span><span id="p1-car" class="car p1" aria-label="Player 1 car">🏎️</span></div>
         <div class="lane"><span class="lane-label">Player 2</span><span id="p2-car" class="car p2" aria-label="Player 2 car">🏎️</span></div>
       </div>
-      <p id="status" role="status">Press Start race to begin. The first player to make 10 correct moves wins.</p>
+      <p id="status" role="status">Press Start race to begin. The first player to make 20 correct moves wins.</p>
     </section>
   </main>
   <script>
     const start=document.querySelector("#start"),arrowEl=document.querySelector("#arrow"),letterEl=document.querySelector("#letter"),p1ScoreEl=document.querySelector("#p1-score"),p2ScoreEl=document.querySelector("#p2-score"),p1Car=document.querySelector("#p1-car"),p2Car=document.querySelector("#p2-car"),status=document.querySelector("#status");
     const prompts=[{arrow:"↑",letter:"W",p1:"w",p2:"ArrowUp"},{arrow:"←",letter:"A",p1:"a",p2:"ArrowLeft"},{arrow:"↓",letter:"S",p1:"s",p2:"ArrowDown"},{arrow:"→",letter:"D",p1:"d",p2:"ArrowRight"}];
-    const MOVES_TO_WIN=10; let scores=[0,0],currentPrompt,running=false;
+    const MOVES_TO_WIN=20; let scores=[0,0],currentPrompt,running=false;
     function updateRace(){p1ScoreEl.textContent=`${scores[0]} / ${MOVES_TO_WIN}`;p2ScoreEl.textContent=`${scores[1]} / ${MOVES_TO_WIN}`;p1Car.style.left=`${4+scores[0]*8.5}%`;p2Car.style.left=`${4+scores[1]*8.5}%`;}
     function nextPrompt(){currentPrompt=prompts[Math.floor(Math.random()*prompts.length)];arrowEl.textContent=currentPrompt.arrow;letterEl.textContent=currentPrompt.letter;document.querySelector("#prompt").setAttribute("aria-label",`Press ${currentPrompt.letter} or ${currentPrompt.arrow}`);}
     function finish(player){running=false;arrowEl.textContent="🏁";letterEl.textContent="!";start.textContent="Race again";status.textContent=`Player ${player+1} wins the race with ${MOVES_TO_WIN} moves!`;}
