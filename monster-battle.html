@@ -29,7 +29,7 @@
 </head>
 <body>
   <main>
-    <div class="topline"><a href="index.html" style="color:#d4e4ff">← All games</a><button id="restart" type="button">New game</button></div>
+    <div class="topline"><a href="index.html" style="color:#d4e4ff">← All games</a><div class="actions"><button id="mode-toggle" type="button">Play vs bot</button><button id="restart" type="button">New game</button></div></div>
     <h1>Monster Battle</h1>
     <p style="text-align:center">Draft creatures, win the terrain vote, build a roster, then destroy every opposing monster.</p>
     <nav class="phase-track" aria-label="Game phases"><span class="phase" data-phase="buying">1. Buying</span><span class="phase" data-phase="choosing">2. Choosing</span><span class="phase" data-phase="building">3. Building</span><span class="phase" data-phase="battle">4. Battle</span></nav>
@@ -48,9 +48,11 @@
         {id:'red', name:'Red', color:'#dc4c4c', text:'+3 life; every 3: +1 heart'}
       ];
       const item = id => ITEMS.find(x => x.id === id);
+      const BOT_DRAFT = ['black','black','black','black','black','red','red','red','red','pink','pink','pink','yellow','yellow','green','brown','blue','lightblue','red','black'];
       const blank = () => ({ ...Object.fromEntries(ITEMS.map(x => [x.id, 0])), history:[] });
-      const state = { phase:'buying', picks:[blank(),blank()], buyTurn:0, terrain:null, buildPlayer:0, monsters:[[],[]], selected:0, battle:null };
+      const state = { phase:'buying', picks:[blank(),blank()], buyTurn:0, terrain:null, buildPlayer:0, monsters:[[],[]], selected:0, battle:null, botEnabled:false };
       const game = document.querySelector('#game');
+      const modeToggleButton = document.querySelector('#mode-toggle');
       const count = (bag, id) => bag[id] || 0;
       const total = bag => ITEMS.reduce((n,x) => n + count(bag,x.id), 0);
       const votes = bag => count(bag,'pink') + Math.floor(count(bag,'black') / 2) + Math.floor(count(bag,'yellow') / 4) * 4;
@@ -101,20 +103,35 @@
       function playerSummary(p, reveal=true) { if (!reveal) return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><p class="subtle">Selections are hidden while the other player is choosing.</p></div>`; const bag=state.picks[p]; return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><div class="counter">${total(bag)} / 20 items</div><div class="stats"><div class="stat"><b>${votes(bag)}</b>votes</div><div class="stat"><b>${count(bag,'yellow') ? Math.floor(count(bag,'yellow')/2) : 0}</b>yellow hearts</div><div class="stat"><b>${count(bag,'red') ? Math.floor(count(bag,'red')/3) : 0}</b>red hearts</div></div></div>`; }
       function renderBuying() {
         const p=state.buyTurn, canPick=total(state.picks[p]) < 20;
-        game.innerHTML = `<h2>Buying</h2><div class="notice"><strong>Player ${p+1}'s picks.</strong> Player 1 drafts all 20 items first, then Player 2 drafts all 20 items. The other player's selections stay hidden until buying ends.</div><div class="players">${playerSummary(0,p===0)}${playerSummary(1,p===1)}</div><h3>Choose one unlimited item card</h3><div class="card-grid">${ITEMS.map(x => `<button class="item-card" data-buy="${x.id}" style="--card:${x.color}" ${canPick?'':'disabled'}><strong><span class="swatch" style="--card:${x.color}"></span>${x.name}</strong><small>${x.text}</small></button>`).join('')}</div>`;
+        const botTurn=state.botEnabled&&p===1;
+        game.innerHTML = `<h2>Buying</h2><div class="notice"><strong>${botTurn?'Bot is drafting its picks.':`Player ${p+1}'s picks.`}</strong> Player 1 drafts all 20 items first, then Player 2 drafts all 20 items. The other player's selections stay hidden until buying ends.</div><div class="players">${playerSummary(0,p===0)}${playerSummary(1,p===1)}</div><h3>Choose one unlimited item card</h3><div class="card-grid">${ITEMS.map(x => `<button class="item-card" data-buy="${x.id}" style="--card:${x.color}" ${canPick&&!botTurn?'':'disabled'}><strong><span class="swatch" style="--card:${x.color}"></span>${x.name}</strong><small>${x.text}</small></button>`).join('')}</div>`;
         game.querySelectorAll('[data-buy]').forEach(b => b.onclick=() => buy(b.dataset.buy));
       }
       function buy(id) {
         const p=state.buyTurn; if (total(state.picks[p]) >= 20) return;
         state.picks[p][id]++;
-        if (p === 0 && total(state.picks[0]) === 20) state.buyTurn=1;
+        if (p === 0 && total(state.picks[0]) === 20) {
+          state.buyTurn=1;
+          if (state.botEnabled) window.setTimeout(draftBotItems, 550);
+        }
         else if (p === 1 && total(state.picks[1]) === 20) state.phase='choosing';
+        render();
+      }
+      function draftBotItems() {
+        if (!state.botEnabled || state.phase!=='buying' || state.buyTurn!==1) return;
+        BOT_DRAFT.forEach(id=>state.picks[1][id]++);
+        state.phase='choosing';
         render();
       }
       function renderChoosing() {
         const a=votes(state.picks[0]), b=votes(state.picks[1]);
         if (a === b) { state.terrain='both'; game.innerHTML=`<h2>Choosing</h2><div class="notice"><strong>It is a ${a}–${b} tie.</strong> Both terrain bonuses apply to every monster: Land and Ocean.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><div class="actions"><button class="primary" id="continue">Continue to Building</button></div>`; document.querySelector('#continue').onclick=() => { state.phase='building'; render(); }; return; }
         const winner=a>b?0:1;
+        if (state.botEnabled && winner===1) {
+          game.innerHTML=`<h2>Choosing</h2><div class="notice"><strong>Bot won the vote (${b} to ${a}).</strong> It is choosing the terrain.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div>`;
+          window.setTimeout(()=>{if(state.phase==='choosing'){const bot=state.picks[1],land=count(bot,'green')*2+count(bot,'brown')*6,ocean=count(bot,'blue')*2+count(bot,'lightblue')*6;state.terrain=land>=ocean?'land':'ocean';state.phase='building';render();}},650);
+          return;
+        }
         game.innerHTML=`<h2>Choosing</h2><div class="notice"><strong>Player ${winner+1} won the vote (${Math.max(a,b)} to ${Math.min(a,b)}).</strong> Choose the terrain. It affects every monster's item bonuses.</div><div class="players">${playerSummary(0)}${playerSummary(1)}</div><div class="choice"><button class="land" data-terrain="land">Choose Land<br><small>Green attack + Brown life</small></button><button class="ocean" data-terrain="ocean">Choose Ocean<br><small>Dark blue attack + Light blue life</small></button></div>`;
         game.querySelectorAll('[data-terrain]').forEach(b => b.onclick=() => { state.terrain=b.dataset.terrain; state.phase='building'; render(); });
       }
@@ -135,28 +152,36 @@
         game.querySelector('#finish-build').onclick=finishBuilding;
       }
       function statMarkup(s) { return `<div class="stats"><div class="stat"><b>${s.hearts}</b>hearts</div><div class="stat"><b>${s.attack}</b>attack</div><div class="stat"><b>${s.life}</b>life</div></div>`; }
-      function finishBuilding() { if(!state.monsters[state.buildPlayer].some(valid)) return; if(state.buildPlayer===0){state.buildPlayer=1;state.selected=0;state.monsters[1]=[blank()];render();} else startBattle(); }
+      function buildBotRoster() {
+        const monster=blank();
+        BOT_DRAFT.forEach(id=>{monster[id]++;monster.history.push(id);});
+        state.monsters[1]=[monster];
+      }
+      function finishBuilding() { if(!state.monsters[state.buildPlayer].some(valid)) return; if(state.buildPlayer===0){if(state.botEnabled){buildBotRoster();startBattle();return;}state.buildPlayer=1;state.selected=0;state.monsters[1]=[blank()];render();} else startBattle(); }
       function startBattle() {
         const rosters=state.monsters.map(r=>r.filter(valid).map(bag=>{const monsterStats=stats(bag);return {...monsterStats,maxLife:monsterStats.life,bag};}));
         state.phase='battle'; state.battle={rosters, indices:[0,0], positions:[{r:0,c:0},{r:8,c:8}], attackCooldown:[0,0], defendCooldown:[0,0], defending:[0,0], winner:null};
-        render(); state.battle.timer=setInterval(renderBattle, 125);
+        render(); state.battle.timer=setInterval(renderBattle, 125); if(state.botEnabled)state.battle.botTimer=setInterval(runBotTurn, 550);
       }
       function active(p) { const b=state.battle; return b.rosters[p][b.indices[p]]; }
       function timeLeft(stamp) { return Math.max(0, (stamp-Date.now())/1000); }
       function renderBattle() {
         if(state.phase!=='battle') return; const b=state.battle, now=Date.now(), occupied=(r,c)=>b.positions.findIndex(pos=>pos.r===r&&pos.c===c);
         const cells=Array.from({length:81},(_,i)=>{const r=Math.floor(i/9),c=i%9,p=occupied(r,c), defeated=b.winner!==null&&p!==b.winner; return `<div class="cell">${p<0||defeated?'':monsterMarkup(active(p).bag,p,`Player ${p+1} monster`,p===b.winner)}</div>`;}).join('');
-        const playerInfo=p=>{const won=b.winner===p, defeated=b.winner!==null&&!won;if(defeated)return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><p class="subtle">All monsters defeated.</p></div>`;const m=active(p), attackCd=timeLeft(b.attackCooldown[p]), defendCd=timeLeft(b.defendCooldown[p]), defending=timeLeft(b.defending[p]); return `<div class="player-box p${p+1} ${won?'winner-glow':''}"><h3>Player ${p+1}${won?' — Winner!':''} — Monster ${b.indices[p]+1}/${b.rosters[p].length}</h3>${statMarkup(m)}<div><b>Current life:</b> ${m.life} / ${m.maxLife} · <b>Attack:</b> ${attackCd?`${attackCd.toFixed(1)}s cooldown`:'ready'} · <b>Defend:</b> ${defending?`ACTIVE ${defending.toFixed(1)}s`:defendCd?`${defendCd.toFixed(1)}s cooldown`:'ready'}</div><p class="subtle">${p===0?'<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Left Shift</kbd> attack · <kbd>1</kbd> defend':'Arrow keys move · <kbd>Right Shift</kbd> attack · <kbd>0</kbd> defend'}</p></div>`;};
+        const playerInfo=p=>{const won=b.winner===p, defeated=b.winner!==null&&!won;if(defeated)return `<div class="player-box p${p+1}"><h3>Player ${p+1}</h3><p class="subtle">All monsters defeated.</p></div>`;const m=active(p), attackCd=timeLeft(b.attackCooldown[p]), defendCd=timeLeft(b.defendCooldown[p]), defending=timeLeft(b.defending[p]); return `<div class="player-box p${p+1} ${won?'winner-glow':''}"><h3>${state.botEnabled&&p===1?'Bot':`Player ${p+1}`}${won?' — Winner!':''} — Monster ${b.indices[p]+1}/${b.rosters[p].length}</h3>${statMarkup(m)}<div><b>Current life:</b> ${m.life} / ${m.maxLife} · <b>Attack:</b> ${attackCd?`${attackCd.toFixed(1)}s cooldown`:'ready'} · <b>Defend:</b> ${defending?`ACTIVE ${defending.toFixed(1)}s`:defendCd?`${defendCd.toFixed(1)}s cooldown`:'ready'}</div><p class="subtle">${p===0?'<kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · <kbd>Left Shift</kbd> attack · <kbd>1</kbd> defend':state.botEnabled?'Bot moves, attacks, and defends automatically.':'Arrow keys move · <kbd>Right Shift</kbd> attack · <kbd>0</kbd> defend'}</p></div>`;};
         const sideLife=p=>{const defeated=b.winner!==null&&b.winner!==p;return `<div class="side-life p${p+1}"><strong>Player ${p+1}</strong><span class="subtle">Current life</span><b>${defeated?'0':`${active(p).life} / ${active(p).maxLife}`}</b></div>`;};
         game.innerHTML=`<h2>Battle — ${terrainName()} Arena</h2><div class="notice">Move on the 9×9 grid. Attack an adjacent enemy (Manhattan distance 1) for your attack value. Defend blocks attacks for one second. Attack and defend each recharge in 5 seconds.</div><div class="battle-info">${playerInfo(0)}${playerInfo(1)}</div><div class="arena-wrap"><div class="battle-board">${sideLife(0)}<div class="arena ${state.terrain}" role="img" aria-label="Nine by nine ${terrainName()} monster battle grid">${cells}</div>${sideLife(1)}</div></div>${b.winner!==null?`<div class="winner">Player ${b.winner+1} wins — all opposing monsters were destroyed!</div>`:''}`;
       }
       function move(p, dr, dc) { const b=state.battle;if(!b||b.winner!==null)return;const old=b.positions[p], next={r:old.r+dr,c:old.c+dc}, foe=b.positions[1-p];if(next.r<0||next.r>8||next.c<0||next.c>8||(next.r===foe.r&&next.c===foe.c))return;b.positions[p]=next;renderBattle(); }
       function attack(p) { const b=state.battle;if(!b||b.winner!==null||timeLeft(b.attackCooldown[p]))return; b.attackCooldown[p]=Date.now()+5000; const foe=1-p, a=b.positions[p], d=b.positions[foe]; if(Math.abs(a.r-d.r)+Math.abs(a.c-d.c)<=1 && !timeLeft(b.defending[foe])) { active(foe).life-=active(p).attack; if(active(foe).life<=0) defeat(foe); } renderBattle(); }
       function defend(p) { const b=state.battle;if(!b||b.winner!==null||timeLeft(b.defendCooldown[p]))return;b.defendCooldown[p]=Date.now()+5000;b.defending[p]=Date.now()+1000;renderBattle(); }
-      function defeat(p) { const b=state.battle;b.indices[p]++; if(b.indices[p]>=b.rosters[p].length){b.winner=1-p;clearInterval(b.timer);return;} b.positions[p]=p?{r:8,c:8}:{r:0,c:0}; }
-      window.addEventListener('keydown', e => { if(state.phase!=='battle'||state.battle.winner!==null)return; const key=e.key, code=e.code, moveKey=e.key.length===1?e.key.toLowerCase():e.key; const movement={w:[0,-1,0],a:[0,0,-1],s:[0,1,0],d:[0,0,1],ArrowUp:[1,-1,0],ArrowDown:[1,1,0],ArrowLeft:[1,0,-1],ArrowRight:[1,0,1]}; if(movement[moveKey]){e.preventDefault();const [p,r,c]=movement[moveKey];move(p,r,c);return;} if(code==='ShiftLeft'){e.preventDefault();if(!e.repeat)attack(0);} if(code==='ShiftRight'){e.preventDefault();if(!e.repeat)attack(1);} if(key==='1'){e.preventDefault();if(!e.repeat)defend(0);} if(key==='0'){e.preventDefault();if(!e.repeat)defend(1);} });
+      function runBotTurn() { const b=state.battle;if(!state.botEnabled||!b||b.winner!==null)return;const bot=b.positions[1],player=b.positions[0],distance=Math.abs(bot.r-player.r)+Math.abs(bot.c-player.c);if(distance===1){if(Math.random()<.18&&!timeLeft(b.defendCooldown[1]))defend(1);else attack(1);return;}if(Math.abs(bot.r-player.r)>=Math.abs(bot.c-player.c))move(1,player.r>bot.r?1:-1,0);else move(1,0,player.c>bot.c?1:-1); }
+      function defeat(p) { const b=state.battle;b.indices[p]++; if(b.indices[p]>=b.rosters[p].length){b.winner=1-p;clearInterval(b.timer);clearInterval(b.botTimer);return;} b.positions[p]=p?{r:8,c:8}:{r:0,c:0}; }
+      window.addEventListener('keydown', e => { if(state.phase!=='battle'||state.battle.winner!==null)return; const key=e.key, code=e.code, moveKey=e.key.length===1?e.key.toLowerCase():e.key; const movement={w:[0,-1,0],a:[0,0,-1],s:[0,1,0],d:[0,0,1],ArrowUp:[1,-1,0],ArrowDown:[1,1,0],ArrowLeft:[1,0,-1],ArrowRight:[1,0,1]}; if(movement[moveKey]){e.preventDefault();const [p,r,c]=movement[moveKey];if(!state.botEnabled||p===0)move(p,r,c);return;} if(code==='ShiftLeft'){e.preventDefault();if(!e.repeat)attack(0);} if(code==='ShiftRight'&&!state.botEnabled){e.preventDefault();if(!e.repeat)attack(1);} if(key==='1'){e.preventDefault();if(!e.repeat)defend(0);} if(key==='0'&&!state.botEnabled){e.preventDefault();if(!e.repeat)defend(1);} });
       function render() { updateTrack(); if(state.phase==='buying')renderBuying(); else if(state.phase==='choosing')renderChoosing(); else if(state.phase==='building')renderBuilding(); else renderBattle(); }
-      document.querySelector('#restart').onclick=()=>{if(state.battle?.timer)clearInterval(state.battle.timer);Object.assign(state,{phase:'buying',picks:[blank(),blank()],buyTurn:0,terrain:null,buildPlayer:0,monsters:[[blank()],[]],selected:0,battle:null});render();};
+      function newGame() { if(state.battle?.timer)clearInterval(state.battle.timer);if(state.battle?.botTimer)clearInterval(state.battle.botTimer);Object.assign(state,{phase:'buying',picks:[blank(),blank()],buyTurn:0,terrain:null,buildPlayer:0,monsters:[[blank()],[]],selected:0,battle:null});render(); }
+      modeToggleButton.onclick=()=>{state.botEnabled=!state.botEnabled;modeToggleButton.textContent=state.botEnabled?'Play 2 players':'Play vs bot';newGame();};
+      document.querySelector('#restart').onclick=newGame;
       state.monsters[0]=[blank()]; render();
     })();
   </script>
