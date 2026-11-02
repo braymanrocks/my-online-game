@@ -28,6 +28,9 @@
       #passage .correct { color: #79e6a2; }
       #passage .incorrect { background: #b6455d; color: #fff; text-decoration: underline; }
       #passage .current { border-bottom: 3px solid #ffd45d; }
+      .track { background: repeating-linear-gradient(90deg, #333f51 0 36px, #3d4c61 36px 72px); border: 4px solid #dfe8f7; border-radius: 13px; height: 82px; margin: 14px 0; overflow: hidden; position: relative; }
+      .finish { background: repeating-conic-gradient(#111 0 25%, #fff 0 50%) 0 / 14px 14px; bottom: 0; position: absolute; right: 7%; top: 0; width: 16px; z-index: 2; }
+      .car { font-size: 2.8rem; left: 4%; line-height: 1; position: absolute; top: 18px; transition: left 100ms ease-out; z-index: 3; }
       textarea { background: #0b1326; border: 2px solid #647da8; border-radius: 12px; color: #fff; display: block; line-height: 1.5; min-height: 105px; padding: 14px; resize: vertical; width: 100%; }
       textarea:focus { border-color: #ffd45d; outline: 3px solid #ffd45d55; }
       textarea:disabled { opacity: .65; }
@@ -53,6 +56,7 @@
           <div class="stat"><b id="accuracy">100%</b>accuracy</div>
         </div>
         <p id="passage" aria-label="Passage to type"></p>
+        <div class="track" aria-label="Typing race track"><div class="finish" aria-label="Finish line"></div><span id="car" class="car" aria-label="Your car">🏎️</span></div>
         <label for="typing">Type the passage</label>
         <textarea id="typing" disabled spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="status"></textarea>
         <p id="status" role="status">Press Start race to begin. Your best WPM is saved on this device.</p>
@@ -70,6 +74,7 @@
       const difficultyElement = document.querySelector("#difficulty");
       const nameElement = document.querySelector("#name");
       const passageElement = document.querySelector("#passage");
+      const carElement = document.querySelector("#car");
       const restartButton = document.querySelector("#restart");
       const statusElement = document.querySelector("#status");
       const typingElement = document.querySelector("#typing");
@@ -97,6 +102,13 @@
           else if (index === typed.length) span.className = "current";
           return span;
         }));
+      }
+
+      function updateCar() {
+        const typed = typingElement.value;
+        let correct = 0;
+        while (correct < typed.length && typed[correct] === passage[correct]) correct += 1;
+        carElement.style.left = `${4 + correct / passage.length * 85}%`;
       }
 
       function measurements() {
@@ -146,6 +158,7 @@
         statusElement.textContent = "Go! Type the whole passage.";
         restartButton.textContent = "Restart race";
         renderPassage();
+        updateCar();
         typingElement.focus();
         timer = setInterval(updateStats, 200);
       }
@@ -153,6 +166,7 @@
       typingElement.addEventListener("input", () => {
         if (typingElement.value.length > passage.length) typingElement.value = typingElement.value.slice(0, passage.length);
         renderPassage();
+        updateCar();
         updateStats();
         if (typingElement.value === passage) finishRace(true);
       });
@@ -162,9 +176,11 @@
         passage = race.passage;
         timeElement.textContent = race.seconds;
         renderPassage();
+        updateCar();
       });
       restartButton.addEventListener("click", startRace);
       renderPassage();
+      updateCar();
       renderHighScore();
     </script>
   </body>
