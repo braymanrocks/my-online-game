@@ -20,8 +20,8 @@
       .stat { background: #101a31; border-radius: 10px; padding: 12px; text-align: center; }
       .stat b { color: #ffd45d; display: block; font-size: 1.5rem; }
       label { color: #c8d5f0; display: block; font-weight: bold; }
-      input, textarea, button { font: inherit; }
-      input { background: #101a31; border: 1px solid #647da8; border-radius: 8px; color: #fff; margin-left: 8px; padding: 8px; width: 180px; }
+      input, select, textarea, button { font: inherit; }
+      input, select { background: #101a31; border: 1px solid #647da8; border-radius: 8px; color: #fff; margin-left: 8px; padding: 8px; width: 180px; }
       button { background: #ffd45d; border: 0; border-radius: 8px; color: #332607; cursor: pointer; font-weight: bold; padding: 11px 16px; }
       button:hover, button:focus-visible { background: #fff0aa; outline: 3px solid #fff; outline-offset: 2px; }
       #passage { background: #101a31; border: 2px solid #3d5278; border-radius: 12px; font-family: Georgia, serif; font-size: clamp(1.1rem, 2.4vw, 1.45rem); letter-spacing: .02em; line-height: 1.75; margin: 14px 0; padding: 20px; }
@@ -32,7 +32,7 @@
       textarea:focus { border-color: #ffd45d; outline: 3px solid #ffd45d55; }
       textarea:disabled { opacity: .65; }
       #status { color: #c8d5f0; min-height: 1.5em; }
-      @media (max-width: 550px) { .stats { grid-template-columns: 1fr; } input { display: block; margin: 7px 0 0; width: 100%; } }
+      @media (max-width: 550px) { .stats { grid-template-columns: 1fr; } input, select { display: block; margin: 7px 0 0; width: 100%; } }
     </style>
   </head>
   <body>
@@ -43,6 +43,7 @@
       <section class="panel" aria-label="Typing Race game">
         <div class="top">
           <label>Player name <input id="name" maxlength="20" value="Player" autocomplete="nickname"></label>
+          <label>Difficulty <select id="difficulty"><option value="easy">Easy</option><option value="medium" selected>Medium</option><option value="hard">Hard</option></select></label>
           <div class="score">High score <strong id="high-score">No score yet</strong></div>
           <button id="restart" type="button">Start race</button>
         </div>
@@ -58,9 +59,15 @@
       </section>
     </main>
     <script>
-      const PASSAGE = "A quick explorer crossed the bright valley at sunrise. Every careful step revealed a new trail, a hidden stream, and a chance to learn something useful. Fast fingers can win this race, but accurate typing makes every word count.";
-      const RACE_SECONDS = 15;
+      const RACES = {
+        easy: { seconds: 40, passage: "The bright car races down the road. Type each word carefully and reach the finish line." },
+        medium: { seconds: 25, passage: "A quick explorer crossed the bright valley at sunrise. Every careful step revealed a new trail, a hidden stream, and a chance to learn something useful." },
+        hard: { seconds: 15, passage: "A quick explorer crossed the bright valley at sunrise. Every careful step revealed a new trail, a hidden stream, and a chance to learn something useful. Fast fingers can win this race, but accurate typing makes every word count." }
+      };
+      let race = RACES.medium;
+      let passage = race.passage;
       const highScoreElement = document.querySelector("#high-score");
+      const difficultyElement = document.querySelector("#difficulty");
       const nameElement = document.querySelector("#name");
       const passageElement = document.querySelector("#passage");
       const restartButton = document.querySelector("#restart");
@@ -83,7 +90,7 @@
 
       function renderPassage() {
         const typed = typingElement.value;
-        passageElement.replaceChildren(...PASSAGE.split("").map((character, index) => {
+        passageElement.replaceChildren(...passage.split("").map((character, index) => {
           const span = document.createElement("span");
           span.textContent = character;
           if (index < typed.length) span.className = typed[index] === character ? "correct" : "incorrect";
@@ -94,18 +101,18 @@
 
       function measurements() {
         const typed = typingElement.value;
-        const correct = [...typed].filter((character, index) => character === PASSAGE[index]).length;
+        const correct = [...typed].filter((character, index) => character === passage[index]).length;
         const elapsedMinutes = Math.max((Date.now() - startedAt) / 60000, 1 / 60000);
         return { correct, wpm: Math.round((correct / 5) / elapsedMinutes), accuracy: typed.length ? Math.round((correct / typed.length) * 100) : 100 };
       }
 
       function updateStats() {
-        const elapsed = Math.min(RACE_SECONDS, Math.floor((Date.now() - startedAt) / 1000));
+        const elapsed = Math.min(race.seconds, Math.floor((Date.now() - startedAt) / 1000));
         const { wpm, accuracy } = measurements();
-        timeElement.textContent = RACE_SECONDS - elapsed;
+        timeElement.textContent = race.seconds - elapsed;
         wpmElement.textContent = wpm;
         accuracyElement.textContent = `${accuracy}%`;
-        if (elapsed >= RACE_SECONDS) finishRace(false);
+        if (elapsed >= race.seconds) finishRace(false);
       }
 
       function finishRace(completed) {
@@ -128,10 +135,12 @@
 
       function startRace() {
         clearInterval(timer);
+        race = RACES[difficultyElement.value];
+        passage = race.passage;
         typingElement.value = "";
         typingElement.disabled = false;
         startedAt = Date.now();
-        timeElement.textContent = RACE_SECONDS;
+        timeElement.textContent = race.seconds;
         wpmElement.textContent = "0";
         accuracyElement.textContent = "100%";
         statusElement.textContent = "Go! Type the whole passage.";
@@ -142,10 +151,17 @@
       }
 
       typingElement.addEventListener("input", () => {
-        if (typingElement.value.length > PASSAGE.length) typingElement.value = typingElement.value.slice(0, PASSAGE.length);
+        if (typingElement.value.length > passage.length) typingElement.value = typingElement.value.slice(0, passage.length);
         renderPassage();
         updateStats();
-        if (typingElement.value === PASSAGE) finishRace(true);
+        if (typingElement.value === passage) finishRace(true);
+      });
+      difficultyElement.addEventListener("change", () => {
+        if (timer) return;
+        race = RACES[difficultyElement.value];
+        passage = race.passage;
+        timeElement.textContent = race.seconds;
+        renderPassage();
       });
       restartButton.addEventListener("click", startRace);
       renderPassage();
