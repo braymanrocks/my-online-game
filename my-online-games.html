@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Online Games</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, sans-serif;
+      }
+
+      body {
+        align-items: center;
+        background: radial-gradient(circle at top, #25437a, #10172b 65%);
+        color: #f8fbff;
+        display: flex;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+      }
+
+      main {
+        max-width: 720px;
+        padding: 48px 24px;
+        text-align: center;
+        width: 100%;
+      }
+
+      h1 {
+        font-size: clamp(2.5rem, 8vw, 4.75rem);
+        margin: 0;
+      }
+
+      p {
+        color: #c8d5f0;
+        font-size: 1.15rem;
+        line-height: 1.6;
+        margin: 16px auto 40px;
+      }
+
+      .games {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        text-align: left;
+      }
+
+      .game-card {
+        background: rgba(20, 31, 58, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 18px;
+        color: inherit;
+        padding: 28px;
+        text-decoration: none;
+        transition: transform 160ms ease, border-color 160ms ease;
+      }
+
+      .game-card:hover,
+      .game-card:focus-visible {
+        border-color: #ffcf3f;
+        outline: none;
+        transform: translateY(-5px);
+      }
+
+      .game-card h2 {
+        margin: 0 0 10px;
+      }
+
+      .game-card p {
+        font-size: 1rem;
+        margin: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>My Online Games</h1>
+      <p>Pick a game and start playing.</p>
+      <section class="games" aria-label="Games">
+        <a class="game-card" href="index.html">
+          <h2>Foxfire Eventing</h2>
+          <p>Explore my redesign for Foxfire Eventing.</p>
+        </a>
+        <a class="game-card" href="connect4.html">
+          <h2>Connect 4</h2>
+          <p>Challenge a friend to get four pieces in a row.</p>
+        </a>
+        <a class="game-card" href="gold-rush.html">
+          <h2>Gold Rush</h2>
+          <p>Race a friend to collect 20 pieces of gold.</p>
+        </a>
+        <a class="game-card" href="africa-conquest.html">
+          <h2>Africa Conquest</h2>
+          <p>Lead your armies across 14 African territories in this Risk-style strategy game.</p>
+        </a>
+        <a class="game-card" href="snake.html">
+          <h2>Snake</h2>
+          <p>Eat fruit, grow longer, and avoid every collision.</p>
+        </a>
+        <a class="game-card" href="whack-a-mole.html">
+          <h2>Whack-a-Mole</h2>
+          <p>Whack as many moles as you can before the clock runs out.</p>
+        </a>
+        <a class="game-card" href="reaction-race.html">
+          <h2>Reaction Race</h2>
+          <p>Test your reflexes through five lightning-fast rounds.</p>
+        </a>
+        <a class="game-card" href="word-scramble.html">
+          <h2>Word Scramble</h2>
+          <p>Unscramble words against the clock.</p>
+        </a>
+        <a class="game-card" href="dinosaur-jump.html">
+          <h2>Dinosaur Jump</h2>
+          <p>Leap over cacti in an endless dinosaur run.</p>
+        </a>
+        <a class="game-card" href="monster-battle.html">
+          <h2>Monster Battle</h2>
+          <p>Draft, build, and battle custom monsters in a two-player arena.</p>
+        </a>
+        <a class="game-card" href="typing-race.html">
+          <h2>Typing Race</h2>
+          <p>Type a complete passage quickly and compete for the highest WPM.</p>
+        </a>
+      </section>
+    </main>
+  </body>
+</html>

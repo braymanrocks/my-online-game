@@ -3,122 +3,879 @@
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Online Game</title>
+    <meta
+      name="description"
+      content="Foxfire Eventing is a youth-founded, volunteer-run horse organization in Goochland, Virginia."
+    >
+    <title>Foxfire Eventing | Learning through service</title>
+    <link rel="preconnect" href="https://foxfireeventing.com">
+    <link rel="preconnect" href="https://givebutter.com">
     <style>
+      @import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap");
+
       :root {
-        color-scheme: dark;
-        font-family: Arial, sans-serif;
+        --ink: #1d2b24;
+        --evergreen: #264333;
+        --moss: #6b7b52;
+        --cream: #f7f3e9;
+        --sand: #e9e1d0;
+        --clay: #b65b3b;
+        --gold: #d7a84c;
+        --white: #fffdf8;
+        font-family: "DM Sans", Arial, sans-serif;
+        color: var(--ink);
+        scroll-behavior: smooth;
       }
+
+      * { box-sizing: border-box; }
 
       body {
-        align-items: center;
-        background: radial-gradient(circle at top, #25437a, #10172b 65%);
-        color: #f8fbff;
-        display: flex;
-        justify-content: center;
+        background: var(--cream);
         margin: 0;
-        min-height: 100vh;
       }
 
-      main {
-        max-width: 720px;
-        padding: 48px 24px;
-        text-align: center;
-        width: 100%;
+      body[data-theme="sunset"] {
+        --clay: #a64f35;
+        --cream: #faeee2;
+        --evergreen: #55352a;
+        --ink: #3a2821;
+        --sand: #ebcfbb;
+        --white: #fff9f3;
+      }
+
+      body[data-theme="twilight"] {
+        --clay: #9d5148;
+        --cream: #e8edf0;
+        --evergreen: #2d4653;
+        --ink: #1d2e37;
+        --sand: #cbd9df;
+        --white: #f9fcfd;
+      }
+
+      a { color: inherit; }
+
+      .skip-link {
+        background: var(--white);
+        left: 1rem;
+        padding: .75rem 1rem;
+        position: fixed;
+        top: -4rem;
+        z-index: 20;
+      }
+
+      .skip-link:focus { top: 1rem; }
+
+      .site-header {
+        align-items: center;
+        background: rgba(247, 243, 233, .96);
+        display: flex;
+        justify-content: space-between;
+        padding: 1rem clamp(1.25rem, 5vw, 5rem);
+        position: relative;
+        z-index: 10;
+      }
+
+      body.landing .site-header .nav,
+      body.landing .site-header .menu-toggle {
+        display: none;
+      }
+
+      body.landing .hero {
+        align-items: center;
+        display: flex;
+        min-height: calc(100vh - 76px);
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: .75rem;
+        text-decoration: none;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: var(--clay);
+        border-radius: 50%;
+        color: var(--white);
+        display: flex;
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 1.4rem;
+        font-weight: 700;
+        height: 2.8rem;
+        justify-content: center;
+        width: 2.8rem;
+      }
+
+      .brand-text {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 1.25rem;
+        font-weight: 700;
+        line-height: 1;
+      }
+
+      .brand-text small {
+        display: block;
+        font-family: "DM Sans", Arial, sans-serif;
+        font-size: .56rem;
+        font-weight: 700;
+        letter-spacing: .16em;
+        margin-top: .3rem;
+        text-transform: uppercase;
+      }
+
+      .menu-toggle {
+        background: transparent;
+        border: 0;
+        color: var(--ink);
+        cursor: pointer;
+        display: none;
+        font: inherit;
+        font-weight: 700;
+        padding: .5rem;
+      }
+
+      .nav {
+        align-items: center;
+        display: flex;
+        gap: clamp(.85rem, 2vw, 2rem);
+      }
+
+      .nav a {
+        font-size: .85rem;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .nav a:not(.button):hover,
+      .nav a:not(.button):focus-visible {
+        color: var(--clay);
+      }
+
+      .button {
+        align-items: center;
+        background: var(--clay);
+        border: 1px solid var(--clay);
+        color: var(--white);
+        display: inline-flex;
+        font-size: .85rem;
+        font-weight: 700;
+        gap: .5rem;
+        justify-content: center;
+        padding: .85rem 1.2rem;
+        text-decoration: none;
+        transition: background .2s ease, color .2s ease, transform .2s ease;
+      }
+
+      .button:hover,
+      .button:focus-visible {
+        background: #95442b;
+        transform: translateY(-2px);
+      }
+
+      .button--light {
+        background: var(--white);
+        border-color: var(--white);
+        color: var(--evergreen);
+      }
+
+      .button--light:hover,
+      .button--light:focus-visible {
+        background: var(--sand);
+        border-color: var(--sand);
+      }
+
+      .eyebrow {
+        color: var(--clay);
+        font-size: .73rem;
+        font-weight: 700;
+        letter-spacing: .16em;
+        margin: 0 0 1rem;
+        text-transform: uppercase;
+      }
+
+      .hero {
+        background: linear-gradient(90deg, rgba(20, 42, 30, .88) 0%, rgba(20, 42, 30, .58) 47%, rgba(20, 42, 30, .1) 100%), url("https://foxfireeventing.com/wp-content/uploads/2019/06/dsc_0351.jpg") center/cover;
+        color: var(--white);
+        min-height: min(720px, 76vh);
+        padding: clamp(5rem, 10vw, 8rem) clamp(1.25rem, 10vw, 10rem);
+        position: relative;
+      }
+
+      .hero-content { max-width: 720px; }
+
+      .hero .eyebrow { color: #f1c96b; }
+
+      h1, h2, h3 {
+        font-family: "Playfair Display", Georgia, serif;
+        line-height: 1.05;
       }
 
       h1 {
-        font-size: clamp(2.5rem, 8vw, 4.75rem);
+        font-size: clamp(3.3rem, 8vw, 6.7rem);
+        letter-spacing: -.055em;
         margin: 0;
       }
 
-      p {
-        color: #c8d5f0;
-        font-size: 1.15rem;
-        line-height: 1.6;
-        margin: 16px auto 40px;
+      .hero h1 em { font-weight: 600; }
+
+      .hero-copy {
+        font-size: clamp(1.05rem, 2vw, 1.3rem);
+        line-height: 1.65;
+        margin: 1.6rem 0 2rem;
+        max-width: 610px;
       }
 
-      .games {
-        display: grid;
-        gap: 20px;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-        text-align: left;
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .8rem;
       }
 
-      .game-card {
-        background: rgba(20, 31, 58, 0.8);
-        border: 1px solid rgba(255, 255, 255, 0.18);
-        border-radius: 18px;
-        color: inherit;
-        padding: 28px;
+      .hero-inspiration {
+        border-left: 2px solid #f1c96b;
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: clamp(1.05rem, 1.8vw, 1.35rem);
+        font-style: italic;
+        line-height: 1.5;
+        margin: 2rem 0 1.5rem;
+        max-width: 650px;
+        padding-left: 1rem;
+      }
+
+      .quick-links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .65rem;
+        margin-top: 1.5rem;
+      }
+
+      .quick-links a {
+        border: 1px solid rgba(255,255,255,.55);
+        color: var(--white);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .04em;
+        padding: .65rem .8rem;
         text-decoration: none;
-        transition: transform 160ms ease, border-color 160ms ease;
+        text-transform: uppercase;
+        transition: background .2s ease, color .2s ease;
       }
 
-      .game-card:hover,
-      .game-card:focus-visible {
-        border-color: #ffcf3f;
+      .quick-links a:hover,
+      .quick-links a:focus-visible {
+        background: var(--white);
+        color: var(--evergreen);
         outline: none;
-        transform: translateY(-5px);
       }
 
-      .game-card h2 {
-        margin: 0 0 10px;
+      .background-picker {
+        align-items: center;
+        display: flex;
+        flex-wrap: wrap;
+        gap: .55rem;
+        margin-top: 1.4rem;
       }
 
-      .game-card p {
-        font-size: 1rem;
+      .background-picker span {
+        font-size: .73rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        margin-right: .25rem;
+        text-transform: uppercase;
+      }
+
+      .theme-button {
+        border: 2px solid rgba(255,255,255,.55);
+        border-radius: 50%;
+        cursor: pointer;
+        height: 1.5rem;
+        padding: 0;
+        transition: transform .2s ease, border-color .2s ease;
+        width: 1.5rem;
+      }
+
+      .theme-button:hover,
+      .theme-button:focus-visible,
+      .theme-button[aria-pressed="true"] {
+        border-color: var(--white);
+        outline: 1px solid #f1c96b;
+        outline-offset: 3px;
+        transform: scale(1.12);
+      }
+
+      .theme-button[data-theme-choice="meadow"] { background: #264333; }
+      .theme-button[data-theme-choice="sunset"] { background: #a64f35; }
+      .theme-button[data-theme-choice="twilight"] { background: #2d4653; }
+
+      .hero-note {
+        bottom: 1.5rem;
+        font-size: .7rem;
+        letter-spacing: .1em;
+        position: absolute;
+        right: clamp(1.25rem, 5vw, 5rem);
+        text-transform: uppercase;
+        writing-mode: vertical-rl;
+      }
+
+      main > section { padding: clamp(4.5rem, 9vw, 8rem) clamp(1.25rem, 8vw, 8rem); }
+
+      .intro {
+        background: var(--white);
+        display: grid;
+        gap: 3rem;
+        grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+      }
+
+      h2 {
+        font-size: clamp(2.4rem, 4.5vw, 4.2rem);
+        letter-spacing: -.045em;
         margin: 0;
+      }
+
+      .intro-copy {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: clamp(1.35rem, 2.3vw, 1.85rem);
+        line-height: 1.45;
+        margin: 0;
+      }
+
+      .intro-detail {
+        align-self: end;
+        border-left: 2px solid var(--gold);
+        line-height: 1.7;
+        margin: 2rem 0 0;
+        padding-left: 1.25rem;
+      }
+
+      .pillars {
+        background: var(--evergreen);
+        color: var(--white);
+      }
+
+      .section-heading {
+        display: flex;
+        gap: 2rem;
+        justify-content: space-between;
+        margin-bottom: 3rem;
+      }
+
+      .section-heading .eyebrow { color: #f1c96b; }
+
+      .section-heading p {
+        line-height: 1.6;
+        margin: 0;
+        max-width: 460px;
+      }
+
+      .pillar-grid {
+        border-top: 1px solid rgba(255,255,255,.35);
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .pillar {
+        border-right: 1px solid rgba(255,255,255,.35);
+        padding: 2rem 2rem 1.5rem 0;
+      }
+
+      .pillar + .pillar { padding-left: 2rem; }
+      .pillar:last-child { border-right: 0; }
+
+      .pillar-number {
+        color: #f1c96b;
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .1em;
+      }
+
+      .pillar h3 {
+        font-size: 1.7rem;
+        margin: 2.8rem 0 .75rem;
+      }
+
+      .pillar p { line-height: 1.65; margin: 0; }
+
+      .approach {
+        background: var(--sand);
+        display: grid;
+        gap: clamp(3rem, 7vw, 8rem);
+        grid-template-columns: minmax(250px, .7fr) minmax(0, 1.3fr);
+      }
+
+      .approach aside {
+        background: var(--clay);
+        color: var(--white);
+        min-height: 330px;
+        padding: 2rem;
+      }
+
+      .approach aside p {
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 1.7rem;
+        line-height: 1.3;
+        margin-top: 5rem;
+      }
+
+      .approach-content > p:not(.eyebrow) {
+        font-size: 1.05rem;
+        line-height: 1.75;
+        margin: 1.5rem 0 2rem;
+      }
+
+      .detail-list {
+        border-top: 1px solid rgba(29,43,36,.25);
+        margin: 0;
+      }
+
+      .detail-list details { border-bottom: 1px solid rgba(29,43,36,.25); }
+      .detail-list summary {
+        cursor: pointer;
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 1.35rem;
+        font-weight: 700;
+        list-style: none;
+        padding: 1.15rem 2rem 1.15rem 0;
+        position: relative;
+      }
+
+      .detail-list summary::-webkit-details-marker { display: none; }
+      .detail-list summary::after {
+        content: "+";
+        font-family: "DM Sans", Arial, sans-serif;
+        font-weight: 400;
+        position: absolute;
+        right: 0;
+      }
+
+      .detail-list details[open] summary::after { content: "–"; }
+      .detail-list p { line-height: 1.7; margin: 0 0 1.4rem; }
+
+      .horses { background: var(--white); }
+
+      .horse-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(3, 1fr);
+        margin-top: 3rem;
+      }
+
+      .horse-card {
+        background: var(--cream);
+        display: flex;
+        flex-direction: column;
+        min-height: 285px;
+        padding: 1.5rem;
+      }
+
+      .horse-card:nth-child(2) { background: #dee3d5; }
+      .horse-card:nth-child(3) { background: #e7d4be; }
+
+      .horse-card h3 { font-size: 1.8rem; margin: auto 0 .65rem; }
+      .horse-card p { line-height: 1.6; margin: 0; }
+
+      .horse-card .button {
+        align-self: flex-start;
+        margin-top: 1.3rem;
+      }
+
+      .horse-note {
+        font-size: .92rem;
+        line-height: 1.6;
+        margin: 2rem 0 0;
+        max-width: 700px;
+      }
+
+      .give {
+        background: var(--evergreen);
+        color: var(--white);
+      }
+
+      .give-grid {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: repeat(4, 1fr);
+        margin-top: 3rem;
+      }
+
+      .give-card {
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.2);
+        display: flex;
+        flex-direction: column;
+        padding: 1.4rem;
+      }
+
+      .give-card h3 {
+        font-family: "DM Sans", Arial, sans-serif;
+        font-size: .9rem;
+        letter-spacing: .02em;
+        line-height: 1.35;
+        margin: 0;
+      }
+
+      .amount {
+        color: #f1c96b;
+        font-family: "Playfair Display", Georgia, serif;
+        font-size: 2.2rem;
+        margin: 1rem 0 1.4rem;
+      }
+
+      .give-card .button {
+        align-self: flex-start;
+        background: transparent;
+        border-color: rgba(255,255,255,.6);
+        margin-top: auto;
+      }
+
+      .give-card .button:hover,
+      .give-card .button:focus-visible { background: var(--white); color: var(--evergreen); }
+
+      .giving-note { color: #e4e6d9; font-size: .92rem; line-height: 1.6; margin: 2rem 0 0; max-width: 700px; }
+
+      .visit {
+        background: linear-gradient(115deg, rgba(29, 43, 36, .88), rgba(29, 43, 36, .63)), url("https://foxfireeventing.com/wp-content/uploads/2019/06/dsc_0250.jpeg") center/cover;
+        color: var(--white);
+        display: grid;
+        gap: 2rem;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .visit h2 { max-width: 500px; }
+      .visit-copy { align-self: end; line-height: 1.7; max-width: 490px; }
+      .address { font-weight: 700; margin: 1.5rem 0; }
+
+      .site-footer {
+        align-items: center;
+        background: #172a20;
+        color: #dfe3d9;
+        display: flex;
+        font-size: .78rem;
+        justify-content: space-between;
+        padding: 1.5rem clamp(1.25rem, 5vw, 5rem);
+      }
+
+      .site-footer p { margin: 0; }
+      .site-footer a { color: var(--white); font-weight: 700; }
+
+      @media (max-width: 800px) {
+        .site-header { position: sticky; top: 0; }
+        .menu-toggle { display: block; }
+        .nav {
+          background: var(--cream);
+          box-shadow: 0 14px 20px rgba(0,0,0,.1);
+          display: none;
+          flex-direction: column;
+          gap: 1.25rem;
+          left: 0;
+          padding: 1.5rem;
+          position: absolute;
+          right: 0;
+          top: 100%;
+        }
+        .nav[data-open="true"] { display: flex; }
+        .intro, .approach, .visit { grid-template-columns: 1fr; }
+        .pillar-grid, .horse-grid { grid-template-columns: 1fr; }
+        .pillar, .pillar + .pillar { border-bottom: 1px solid rgba(255,255,255,.35); border-right: 0; padding: 1.6rem 0; }
+        .pillar:last-child { border-bottom: 0; }
+        .pillar h3 { margin-top: 1.8rem; }
+        .give-grid { grid-template-columns: 1fr 1fr; }
+        .section-heading { display: block; }
+        .section-heading p { margin-top: 1rem; }
+      }
+
+      @media (max-width: 480px) {
+        .give-grid { grid-template-columns: 1fr; }
+        .hero-note { display: none; }
+        .site-footer { align-items: flex-start; flex-direction: column; gap: .75rem; }
       }
     </style>
   </head>
-  <body>
-    <main>
-      <h1>My Online Games</h1>
-      <p>Pick a game and start playing.</p>
-      <section class="games" aria-label="Games">
-        <a class="game-card" href="connect4.html">
-          <h2>Connect 4</h2>
-          <p>Challenge a friend to get four pieces in a row.</p>
-        </a>
-        <a class="game-card" href="gold-rush.html">
-          <h2>Gold Rush</h2>
-          <p>Race a friend to collect 20 pieces of gold.</p>
-        </a>
-        <a class="game-card" href="africa-conquest.html">
-          <h2>Africa Conquest</h2>
-          <p>Lead your armies across 14 African territories in this Risk-style strategy game.</p>
-        </a>
-        <a class="game-card" href="snake.html">
-          <h2>Snake</h2>
-          <p>Eat fruit, grow longer, and avoid every collision.</p>
-        </a>
-        <a class="game-card" href="whack-a-mole.html">
-          <h2>Whack-a-Mole</h2>
-          <p>Whack as many moles as you can before the clock runs out.</p>
-        </a>
-        <a class="game-card" href="reaction-race.html">
-          <h2>Reaction Race</h2>
-          <p>Test your reflexes through five lightning-fast rounds.</p>
-        </a>
-        <a class="game-card" href="word-scramble.html">
-          <h2>Word Scramble</h2>
-          <p>Unscramble words against the clock.</p>
-        </a>
-        <a class="game-card" href="dinosaur-jump.html">
-          <h2>Dinosaur Jump</h2>
-          <p>Leap over cacti in an endless dinosaur run.</p>
-        </a>
-        <a class="game-card" href="monster-battle.html">
-          <h2>Monster Battle</h2>
-          <p>Draft, build, and battle custom monsters in a two-player arena.</p>
-        </a>
-        <a class="game-card" href="typing-race.html">
-          <h2>Typing Race</h2>
-          <p>Type a complete passage quickly and compete for the highest WPM.</p>
-        </a>
+  <body class="landing">
+    <a class="skip-link" href="#main">Skip to content</a>
+    <header class="site-header">
+      <a class="brand" href="#start" aria-label="Return to the Foxfire Eventing start page">
+        <span class="brand-mark" aria-hidden="true">F</span>
+        <span class="brand-text">Foxfire<small>Eventing</small></span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="primary-nav">Menu</button>
+      <nav class="nav" id="primary-nav" aria-label="Primary navigation">
+        <a href="#mission">Our mission</a>
+        <a href="#program">The program</a>
+        <a href="#horses">Our horses</a>
+        <a href="#visit">Visit</a>
+        <a class="button" href="https://givebutter.com/PwZth7" target="_blank" rel="noopener">Give today <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <section class="hero" id="start" aria-labelledby="hero-title">
+        <div class="hero-content">
+          <p class="eyebrow">Goochland, Virginia · Central Virginia</p>
+          <h1 id="hero-title">Learning <em>through</em> service.</h1>
+          <p class="hero-copy">A youth-founded, volunteer-run horse organization where young people grow in horsemanship, leadership, and responsibility.</p>
+          <p class="hero-inspiration">“We believe those skills matter in the saddle, on the ground, and far beyond the barn.”</p>
+          <div class="hero-actions">
+            <a class="button button--light" href="#program">Explore the program</a>
+            <a class="button" href="https://givebutter.com/PwZth7" target="_blank" rel="noopener">Support Foxfire <span aria-hidden="true">↗</span></a>
+          </div>
+          <nav class="quick-links" aria-label="Explore Foxfire">
+            <a href="#mission">Our mission</a>
+            <a href="#program">The program</a>
+            <a href="#horses">Meet the herd</a>
+            <a href="#give">Ways to give</a>
+            <a href="#visit">Plan a visit</a>
+          </nav>
+          <div class="background-picker" aria-label="Choose a page background">
+            <span>Choose a background</span>
+            <button class="theme-button" type="button" data-theme-choice="meadow" aria-label="Meadow background" aria-pressed="true"></button>
+            <button class="theme-button" type="button" data-theme-choice="sunset" aria-label="Sunset background" aria-pressed="false"></button>
+            <button class="theme-button" type="button" data-theme-choice="twilight" aria-label="Twilight background" aria-pressed="false"></button>
+          </div>
+        </div>
+        <span class="hero-note">Horsemanship · Service · Community</span>
       </section>
+
+      <div id="site-content" hidden>
+      <section class="intro" id="mission" aria-labelledby="mission-title">
+        <div>
+          <p class="eyebrow">Our mission</p>
+          <h2 id="mission-title">A place to learn what care looks like.</h2>
+        </div>
+        <div>
+          <p class="intro-copy">Foxfire gives horses a purposeful next chapter while giving young people a real place to practice care, skill, and leadership.</p>
+          <p class="intro-detail">We are a 501(c)(3) public charity and every person who teaches, feeds, mucks stalls, or keeps the program moving is a volunteer.</p>
+        </div>
+      </section>
+
+      <section class="pillars" aria-labelledby="pillars-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">What we do</p>
+            <h2 id="pillars-title">Built around meaningful work.</h2>
+          </div>
+          <p>At the barn and beyond it, participants find the confidence that comes from showing up for a team.</p>
+        </div>
+        <div class="pillar-grid">
+          <article class="pillar">
+            <span class="pillar-number">01</span>
+            <h3>Care for horses</h3>
+            <p>Participants help provide daily, direct care for the horses who make the program possible.</p>
+          </article>
+          <article class="pillar">
+            <span class="pillar-number">02</span>
+            <h3>Build horsemanship</h3>
+            <p>Riders develop practical skill through regular instruction, horse theory, and thoughtful practice.</p>
+          </article>
+          <article class="pillar">
+            <span class="pillar-number">03</span>
+            <h3>Serve a community</h3>
+            <p>Young people learn alongside mentors, peers, and equestrian organizations throughout central Virginia.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="approach" id="program" aria-labelledby="program-title">
+        <aside>
+          <p class="eyebrow">We meet you where you are</p>
+          <p>“Very experienced in the saddle? We can help you meet goals to move up the levels!”</p>
+        </aside>
+        <div class="approach-content">
+          <p class="eyebrow">Our approach</p>
+          <h2 id="program-title">Partnership, before performance.</h2>
+          <p>At Foxfire, horsemanship begins with communication, relationship, and respect for the individual. Both our horses and our humans come to us with diverse backgrounds, experiences, strengths, challenges, and goals, and good horsemanship means learning to understand the individual in front of you. Care team and volunteers handle horses with collaborative leadership. Riders, who are also always part of the care team, learn not to "make a horse perform a task," but to listen, communicate clearly, build trust, and develop partnerships over time. We believe those skills matter in the saddle, on the ground, and far beyond the barn.</p>
+          <div class="detail-list">
+            <details open>
+              <summary>Our training foundation</summary>
+              <p>All of our riders are taught from a foundation of dressage-based flatwork, with an emphasis on developing correct position, balance, effective aids, and thoughtful communication between horse and rider. As riders progress, they may choose to pursue jumping when they, their parents, and their instructors or mentors agree that they are ready, but jumping is never a requirement. Some Foxfire riders choose to focus exclusively on dressage, and there is a lifetime of horsemanship, skill, and partnership to develop without ever leaving the ground.</p>
+            </details>
+            <details>
+              <summary>Eventing</summary>
+              <p>Eventing is an equestrian triathlon in which horse-and-rider partnerships compete in three distinct phases: dressage, cross-country, and show jumping. The sport tests far more than proficiency in three separate disciplines. It requires a horse to combine obedience and correct training with athleticism, endurance, courage, carefulness, and adaptability. Riders must develop their horses systematically so that the same partnership can produce precise, controlled work in the dressage arena, gallop boldly and efficiently across country, and return to the show-jumping ring with the balance and accuracy to leave the rails up. The result is one of the most comprehensive tests of horse and rider in equestrian sport.</p>
+            </details>
+            <details>
+              <summary>The three phases</summary>
+              <p><strong>Dressage:</strong> Dressage provides the foundation for every phase of eventing. The test evaluates the quality of the horse's training through rhythm, suppleness, contact, impulsion, straightness, balance, and obedience, as well as the harmony and effectiveness of the partnership. Rather than simply performing a prescribed series of movements, horse and rider demonstrate the progressive development of the horse's way of going and the qualities that make the horse more rideable, adjustable, and athletic throughout the competition.</p>
+              <p><strong>Cross-country:</strong> Cross-country is the defining endurance and bravery test of eventing. Horse and rider travel at speed over varied terrain while negotiating solid obstacles and technical questions that may include banks, ditches, water, combinations, and changes of elevation. A successful round requires courage and trust, but also balance, adjustability, accuracy, stamina, and sound judgment. The rider must establish an efficient rhythm, choose appropriate lines and speeds, and prepare the horse for each question without unnecessarily disrupting the gallop.</p>
+              <p><strong>Show jumping:</strong> Show jumping tests the horse and rider's ability to negotiate a course of obstacles accurately within an allowed time while leaving the fences standing. Success requires balance, adjustability, impulsion, carefulness, and an effective, economical track. In eventing, the phase also demonstrates whether the horse's training allows the rider to maintain rhythm and control while producing the power and technique necessary to jump cleanly.</p>
+            </details>
+          </div>
+        </div>
+      </section>
+
+      <section class="horses" id="horses" aria-labelledby="horses-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Meet the herd</p>
+            <h2 id="horses-title">Every horse has a story.</h2>
+          </div>
+          <p>Our horses come from many different backgrounds and each is cared for as an individual.</p>
+        </div>
+        <div class="horse-grid">
+          <article class="horse-card">
+            <p class="eyebrow">A familiar face</p>
+            <h3>Boss Man</h3>
+            <p>Our surprisingly elegant, unexpectedly athletic, resident class clown and reigning Chubbiest Showman! Boss is everyone's go-to for a good laugh, always in your pocket and up for a cuddle. The pudgy exterior fools people: riders and spectators are always surprised by his lovely movement in dressage and his athleticism over jumps. He's taught plenty of riders the basics and more.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+          <article class="horse-card">
+            <p class="eyebrow">The herd</p>
+            <h3>Juliette</h3>
+            <p>A Budyonny, a Russian sport horse breed known for being incredibly smart and headstrong, and Juliette certainly lives up to it. With her hair "full of secrets," she has an opinion on just about everything and believes she is in charge of the mare field, which may be true. A bit bossy and always ready to be the center of attention, she's also as sweet as can be and loves a good snuggle.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+          <article class="horse-card">
+            <p class="eyebrow">A fighting spirit</p>
+            <h3>Orko</h3>
+            <p>When international eventer Liz Halliday met our youth team at the Kentucky Three-Day Event in 2024, she wrote Orko a note to "keep fighting" as he transitioned to his new life. That note has hung in our horse trailer and on his stall at his first event, and her fighting spirit has inspired us all.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+          <article class="horse-card">
+            <p class="eyebrow">The herd</p>
+            <h3>Zarah</h3>
+            <p>Help support Zarah's care at Foxfire.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+          <article class="horse-card">
+            <p class="eyebrow">The herd</p>
+            <h3>Donovan</h3>
+            <p>Help support Donovan's care at Foxfire.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=435" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+          <article class="horse-card">
+            <p class="eyebrow">The herd</p>
+            <h3>Joel</h3>
+            <p>Help support Joel's care at Foxfire.</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Help sponsor</a>
+          </article>
+        </div>
+        <p class="horse-note">Our horses come to us from many different backgrounds. Some have been well loved and cared for, but their families encountered changes or challenges in life; others have experienced neglect, inadequate care, or even abuse. Whatever their history, each horse is treated as an individual, with thoughtfully tailored nutrition, appropriate veterinary and farrier care, safe and knowledgeable handling, and training designed around that horse's physical and emotional needs. Our volunteers, team members, and riders become part of that process, learning how consistent care, patient communication, and good horsemanship help horses become healthy, confident partners.</p>
+      </section>
+
+      <section class="give" id="give" aria-labelledby="give-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Give with purpose</p>
+            <h2 id="give-title">Keep the work going.</h2>
+          </div>
+          <p>Your gift supports the horses, riders, and volunteer-powered work at the heart of Foxfire.</p>
+        </div>
+        <div class="give-grid">
+          <article class="give-card">
+            <h3>One load of hay</h3>
+            <p class="amount">$273</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=273" target="_blank" rel="noopener">Give this gift</a>
+          </article>
+          <article class="give-card">
+            <h3>Partial care sponsorship</h3>
+            <p class="amount">$335</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=335" target="_blank" rel="noopener">Give this gift</a>
+          </article>
+          <article class="give-card">
+            <h3>Full care sponsorship</h3>
+            <p class="amount">$435</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=435" target="_blank" rel="noopener">Give this gift</a>
+          </article>
+          <article class="give-card">
+            <h3>Send a rider to a local competition</h3>
+            <p class="amount">$85</p>
+            <a class="button" href="https://givebutter.com/PwZth7?amount=85" target="_blank" rel="noopener">Give this gift</a>
+          </article>
+        </div>
+        <p class="giving-note">Foxfire's monthly herd costs include $2,000 for hay and $1,600 for grain. Donations are tax-deductible as allowed by law. Givebutter accepts cards, PayPal, and Venmo; its optional checkout tip goes to Givebutter, not Foxfire.</p>
+      </section>
+
+      <section class="visit" id="visit" aria-labelledby="visit-title">
+        <div>
+          <p class="eyebrow">Find Foxfire</p>
+          <h2 id="visit-title">Come see the work in action.</h2>
+        </div>
+        <div class="visit-copy">
+          <p>Because Foxfire is an all-volunteer barn, there isn't always someone there. Please reach out before visiting so a time can be arranged.</p>
+          <p class="address">4511 3 Square Rd<br>Goochland, VA 23063</p>
+          <a class="button button--light" href="https://maps.google.com/?q=4511+3+Square+Rd,+Goochland,+VA+23063" target="_blank" rel="noopener">Get directions <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+      </div>
     </main>
+
+    <footer class="site-footer" id="site-footer" hidden>
+      <p>© <span id="year"></span> Foxfire Eventing, Inc. · 501(c)(3) public charity · EIN 82-3219011</p>
+      <p><a href="my-online-games.html">My Online Games</a> · <a href="https://givebutter.com/PwZth7" target="_blank" rel="noopener">Support Foxfire ↗</a></p>
+    </footer>
+
+    <script>
+      const menuButton = document.querySelector(".menu-toggle");
+      const nav = document.querySelector(".nav");
+      const siteContent = document.getElementById("site-content");
+      const siteFooter = document.getElementById("site-footer");
+      const brand = document.querySelector(".brand");
+      const themeButtons = document.querySelectorAll(".theme-button");
+
+      function showSite() {
+        siteContent.hidden = false;
+        siteFooter.hidden = false;
+        document.body.classList.remove("landing");
+      }
+
+      function showStartPage() {
+        siteContent.hidden = true;
+        siteFooter.hidden = true;
+        document.body.classList.add("landing");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      menuButton.addEventListener("click", () => {
+        const isOpen = nav.dataset.open === "true";
+        nav.dataset.open = String(!isOpen);
+        menuButton.setAttribute("aria-expanded", String(!isOpen));
+      });
+
+      nav.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          if (link.hash) {
+            showSite();
+          }
+          nav.dataset.open = "false";
+          menuButton.setAttribute("aria-expanded", "false");
+        });
+      });
+
+      document.querySelectorAll('a[href^="#"]').forEach((link) => {
+        if (link === brand || link.getAttribute("href") === "#main") {
+          return;
+        }
+
+        link.addEventListener("click", (event) => {
+          const target = document.querySelector(link.hash);
+          if (!target) {
+            return;
+          }
+
+          event.preventDefault();
+          showSite();
+          target.scrollIntoView({ behavior: "smooth" });
+          history.pushState(null, "", link.hash);
+        });
+      });
+
+      brand.addEventListener("click", (event) => {
+        event.preventDefault();
+        showStartPage();
+        history.pushState(null, "", "#start");
+      });
+
+      themeButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          const theme = button.dataset.themeChoice;
+          document.body.dataset.theme = theme === "meadow" ? "" : theme;
+          themeButtons.forEach((themeButton) => {
+            themeButton.setAttribute("aria-pressed", String(themeButton === button));
+          });
+        });
+      });
+
+      document.getElementById("year").textContent = new Date().getFullYear();
+    </script>
   </body>
 </html>
