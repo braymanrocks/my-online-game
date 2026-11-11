@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Army Command</title>
+  <style>
+    :root { color-scheme:dark; font-family:Arial,sans-serif; --ink:#f3f7ff; --muted:#b7c8df; --panel:#14243b; --p1:#55bcf0; --p2:#ff7f72; --gold:#ffd364; }
+    * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#2e5279,#09111c 68%); color:var(--ink); margin:0; min-height:100vh; }
+    main { margin:auto; max-width:1100px; padding:24px 16px 42px; } .topline { display:flex; justify-content:space-between; margin-bottom:16px; } .back { color:#d5e8ff; text-decoration:none; } .back:hover { color:var(--gold); }
+    h1 { font-size:clamp(2.4rem,7vw,4.5rem); letter-spacing:-.07em; margin:0; text-align:center; } .tagline { color:var(--muted); text-align:center; }
+    .game { background:#102037e8; border:1px solid #4d719a; border-radius:20px; box-shadow:0 20px 55px #0008; overflow:hidden; position:relative; }
+    .topbar { align-items:center; background:#0b1727; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; padding:12px 16px; } .turn { font-weight:bold; } .turn.p1 { color:var(--p1); } .turn.p2 { color:var(--p2); }
+    button { background:#29425f; border:1px solid #6f8cab; border-radius:9px; color:var(--ink); cursor:pointer; font:inherit; padding:10px 13px; } button:hover:not(:disabled),button:focus-visible { background:#3a5778; border-color:var(--gold); outline:none; } button:disabled { cursor:not-allowed; opacity:.42; }
+    .battle-layout { display:grid; gap:18px; grid-template-columns:minmax(0,1fr) 270px; padding:18px; } .board { aspect-ratio:10/9; background:#315f49; border:5px solid #759e68; display:grid; grid-template-columns:repeat(10,1fr); overflow:hidden; }
+    .cell { background:linear-gradient(135deg,#70a85c,#3c7c49); border:1px solid #2d6239; min-height:0; padding:0; position:relative; } .cell:nth-child(odd) { background:linear-gradient(135deg,#7eb867,#4a8d52); } .cell.water { background:linear-gradient(135deg,#4fa4d1,#236b9d); border-color:#245a82; } .cell.rock { background:linear-gradient(135deg,#9a9fa1,#59656b); border-color:#465156; }
+    .cell.move { box-shadow:inset 0 0 0 4px #b4f4a1; } .cell.attack { box-shadow:inset 0 0 0 4px #ffcf69; } .cell.selected { box-shadow:inset 0 0 0 4px #fff3a7; } .cell:hover:not(:disabled) { filter:brightness(1.12); }
+    .unit { align-items:center; border:3px solid #edf8ff; border-radius:50%; box-shadow:0 2px 6px #0009; display:flex; font-size:clamp(.65rem,2vw,1.15rem); font-weight:bold; height:72%; justify-content:center; left:14%; position:absolute; top:14%; width:72%; } .unit.p1 { background:radial-gradient(circle at 35% 30%,#b5efff,#2688bd); } .unit.p2 { background:radial-gradient(circle at 35% 30%,#ffd1bd,#bf4b4d); } .unit.spent { filter:grayscale(.8); opacity:.65; } .unit .health { background:#111c2c; border-radius:99px; bottom:-16%; color:#fff; font-size:clamp(.48rem,1.4vw,.75rem); padding:2px 5px; position:absolute; }
+    .sidebar { display:flex; flex-direction:column; gap:12px; } .card { background:#1b304a; border:1px solid #4c6789; border-radius:12px; padding:14px; } .card h2 { font-size:1.05rem; margin:0 0 10px; } .card p { color:var(--muted); font-size:.9rem; line-height:1.5; margin:0; } .unit-key { display:grid; gap:8px; margin-top:10px; } .unit-key div { border-left:7px solid var(--key); background:#102239; padding:7px; } .unit-key b { display:block; } .status { border-left:4px solid var(--gold); }
+    .overlay { align-items:center; background:#071321d9; display:flex; inset:0; justify-content:center; padding:20px; position:absolute; text-align:center; z-index:5; } .overlay.hidden { display:none; } .overlay-card { max-width:640px; } .overlay h2 { font-size:clamp(2.2rem,6vw,4rem); margin:0 0 10px; } .overlay p { color:#d1e0f2; line-height:1.6; }
+    .mode-buttons { display:grid; gap:12px; grid-template-columns:1fr 1fr; margin:22px 0; } .mode-buttons button { min-height:115px; text-align:left; } .mode-buttons strong { display:block; font-size:1.2rem; margin-bottom:8px; } .mode-buttons small { color:#c1d4eb; line-height:1.4; }
+    .help { color:var(--muted); font-size:.85rem; margin-top:16px; text-align:center; }
+    @media (max-width:760px) { .battle-layout { grid-template-columns:1fr; } .board { max-width:650px; width:100%; } .sidebar { display:grid; grid-template-columns:1fr 1fr; } .status { grid-column:1/-1; } } @media (max-width:460px) { .sidebar,.mode-buttons { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline"><a class="back" href="index.html">← All games</a><span>Original turn-based strategy</span></div>
+    <h1>Army Command</h1>
+    <p class="tagline">Command your squad, use each unit wisely, and defeat the opposing army.</p>
+    <section class="game" aria-label="Army Command strategy game">
+      <div class="topbar"><span class="turn" id="turn-label">Choose a game mode</span><button id="end-turn" type="button" disabled>End turn</button></div>
+      <div class="battle-layout">
+        <div class="board" id="board" aria-label="Ten by nine battlefield"></div>
+        <aside class="sidebar">
+          <section class="card status"><h2>Battle orders</h2><p id="status">Choose a mode to begin your command.</p></section>
+          <section class="card"><h2>Squad types</h2><div class="unit-key"><div style="--key:#7ce6ff"><b>Scout</b><span>Moves 3 · attacks 2 · 7 health</span></div><div style="--key:#ffd364"><b>Ranger</b><span>Moves 2 · range 2 · 3 attack · 6 health</span></div><div style="--key:#ff8a76"><b>Tank</b><span>Moves 1 · attacks 4 · 11 health</span></div></div><p>Each army has two of every unit type.</p></section>
+          <section class="card"><h2>How to play</h2><p>Click one of your units, then click a highlighted tile to move or an enemy to attack. Every unit gets one action each turn.</p></section>
+        </aside>
+      </div>
+      <div class="overlay" id="start-screen">
+        <div class="overlay-card">
+          <h2>Choose your commander</h2>
+          <p>Play face-to-face with a friend or lead the blue army against a tactical robot commander.</p>
+          <div class="mode-buttons"><button data-mode="two-player" type="button"><strong>Two players</strong><small>Pass the device and command the blue and red armies.</small></button><button data-mode="robot" type="button"><strong>Fight the robot</strong><small>The robot commands the red army and advances after your turn.</small></button></div>
+          <p class="help">Eliminate every enemy unit to win.</p>
+        </div>
+      </div>
+      <div class="overlay hidden" id="finish-screen"><div class="overlay-card"><h2 id="winner-title">Victory!</h2><p id="winner-copy"></p><button id="play-again" type="button">Play again</button></div></div>
+    </section>
+  </main>
+  <script>
+    const board = document.getElementById("board");
+    const turnLabel = document.getElementById("turn-label");
+    const status = document.getElementById("status");
+    const endTurnButton = document.getElementById("end-turn");
+    const startScreen = document.getElementById("start-screen");
+    const finishScreen = document.getElementById("finish-screen");
+    const winnerTitle = document.getElementById("winner-title");
+    const winnerCopy = document.getElementById("winner-copy");
+    const rows = 9, columns = 10;
+    const blockedTiles = new Set(["3,3","4,3","5,3","6,3","3,4","6,4","3,5","4,5","5,5","6,5"]);
+    const waterTiles = new Set(["0,2","1,2","2,2","7,6","8,6","9,6","0,7","9,1"]);
+    const unitTypes = {
+      scout:{ name:"Scout", icon:"S", health:7, move:3, attack:2, range:1 },
+      ranger:{ name:"Ranger", icon:"R", health:6, move:2, attack:3, range:2 },
+      tank:{ name:"Tank", icon:"T", health:11, move:1, attack:4, range:1 }
+    };
+    let mode = null;
+    let turn = 0;
+    let units = [];
+    let selectedId = null;
+    let gameOver = false;
+
+    const distance = (a,b) => Math.abs(a.row-b.row) + Math.abs(a.column-b.column);
+    const unitAt = (row,column) => units.find(unit => unit.health > 0 && unit.row === row && unit.column === column);
+    const activeUnits = side => units.filter(unit => unit.side === side && unit.health > 0);
+
+    function createUnits() {
+      return [
+        {id:"b-s1",side:0,type:"scout",row:8,column:0,health:7,acted:false}, {id:"b-s2",side:0,type:"scout",row:8,column:3,health:7,acted:false},
+        {id:"b-r1",side:0,type:"ranger",row:8,column:4,health:6,acted:false}, {id:"b-r2",side:0,type:"ranger",row:8,column:6,health:6,acted:false},
+        {id:"b-t1",side:0,type:"tank",row:8,column:7,health:11,acted:false}, {id:"b-t2",side:0,type:"tank",row:8,column:9,health:11,acted:false},
+        {id:"r-s1",side:1,type:"scout",row:0,column:0,health:7,acted:false}, {id:"r-s2",side:1,type:"scout",row:0,column:3,health:7,acted:false},
+        {id:"r-r1",side:1,type:"ranger",row:0,column:4,health:6,acted:false}, {id:"r-r2",side:1,type:"ranger",row:0,column:6,health:6,acted:false},
+        {id:"r-t1",side:1,type:"tank",row:0,column:7,health:11,acted:false}, {id:"r-t2",side:1,type:"tank",row:0,column:9,health:11,acted:false}
+      ];
+    }
+
+    function selectedUnit() { return units.find(unit => unit.id === selectedId); }
+    function canControl(side) { return !gameOver && (mode === "two-player" || side === 0 || !mode); }
+
+    function possibleMove(unit, row, column) {
+      return !unitAt(row,column) && !blockedTiles.has(`${column},${row}`) && distance(unit,{row,column}) <= unitTypes[unit.type].move;
+    }
+
+    function possibleAttack(unit, target) {
+      return target.side !== unit.side && distance(unit,target) <= unitTypes[unit.type].range;
+    }
+
+    function render() {
+      board.innerHTML = "";
+      const selected = selectedUnit();
+      for (let row=0; row<rows; row++) {
+        for (let column=0; column<columns; column++) {
+          const cell = document.createElement("button");
+          const key = `${column},${row}`;
+          cell.className = `cell${waterTiles.has(key) ? " water" : ""}${blockedTiles.has(key) ? " rock" : ""}`;
+          cell.type = "button";
+          const unit = unitAt(row,column);
+          if (selected && !selected.acted && canControl(selected.side)) {
+            if (!unit && possibleMove(selected,row,column)) cell.classList.add("move");
+            if (unit && possibleAttack(selected,unit)) cell.classList.add("attack");
+          }
+          if (unit && unit.id === selectedId) cell.classList.add("selected");
+          if (unit) {
+            const type = unitTypes[unit.type];
+            const marker = document.createElement("span");
+            marker.className = `unit p${unit.side+1}${unit.acted ? " spent" : ""}`;
+            marker.innerHTML = `${type.icon}<span class="health">${unit.health}</span>`;
+            marker.title = `${type.name}: ${unit.health} health`;
+            cell.append(marker);
+          }
+          cell.addEventListener("click", () => clickCell(row,column));
+          board.append(cell);
+        }
+      }
+      const label = mode === "robot" && turn === 1 ? "Robot commander is moving…" : `${turn === 0 ? "Blue" : "Red"} army's turn`;
+      turnLabel.textContent = label;
+      turnLabel.className = `turn p${turn+1}`;
+      endTurnButton.disabled = gameOver || (mode === "robot" && turn === 1);
+    }
+
+    function clickCell(row,column) {
+      if (gameOver || !canControl(turn)) return;
+      const clicked = unitAt(row,column);
+      const selected = selectedUnit();
+      if (clicked && clicked.side === turn && !clicked.acted) {
+        selectedId = clicked.id;
+        status.textContent = `${unitTypes[clicked.type].name} selected. Move to green tiles or attack enemies in gold tiles.`;
+        render();
+        return;
+      }
+      if (!selected || selected.side !== turn || selected.acted) return;
+      if (clicked && possibleAttack(selected,clicked)) {
+        attack(selected,clicked);
+        return;
+      }
+      if (!clicked && possibleMove(selected,row,column)) {
+        selected.row = row; selected.column = column; selected.acted = true; selectedId = null;
+        status.textContent = `${unitTypes[selected.type].name} moved.`;
+        render();
+        checkEndOfTurn();
+      }
+    }
+
+    function attack(attacker,target) {
+      const type = unitTypes[attacker.type];
+      target.health -= type.attack;
+      attacker.acted = true; selectedId = null;
+      status.textContent = `${type.name} attacked the enemy ${unitTypes[target.type].name} for ${type.attack} damage.`;
+      if (target.health <= 0) {
+        status.textContent += " The unit was defeated!";
+        units = units.filter(unit => unit.health > 0);
+      }
+      render();
+      if (checkWinner()) return;
+      checkEndOfTurn();
+    }
+
+    function checkWinner() {
+      const blueAlive = activeUnits(0).length > 0, redAlive = activeUnits(1).length > 0;
+      if (blueAlive && redAlive) return false;
+      gameOver = true;
+      const winner = blueAlive ? "Blue" : "Red";
+      winnerTitle.textContent = `${winner} army wins!`;
+      winnerCopy.textContent = mode === "robot" ? (blueAlive ? "You outmaneuvered the robot commander." : "The robot commander took the battlefield this time.") : `${winner} eliminated the opposing army.`;
+      finishScreen.classList.remove("hidden");
+      render();
+      return true;
+    }
+
+    function checkEndOfTurn() {
+      if (activeUnits(turn).every(unit => unit.acted)) endTurn();
+    }
+
+    function endTurn() {
+      if (gameOver) return;
+      turn = 1 - turn; selectedId = null;
+      activeUnits(turn).forEach(unit => { unit.acted = false; });
+      status.textContent = `${turn === 0 ? "Blue" : "Red"} army, choose a unit.`;
+      render();
+      if (mode === "robot" && turn === 1) window.setTimeout(robotTurn, 600);
+    }
+
+    function robotTurn() {
+      if (gameOver || turn !== 1) return;
+      const robotUnits = activeUnits(1);
+      let step = 0;
+      function takeAction() {
+        const unit = robotUnits[step++];
+        if (!unit || gameOver || turn !== 1) { if (!gameOver && turn === 1) endTurn(); return; }
+        const enemies = activeUnits(0).sort((a,b) => distance(unit,a) - distance(unit,b));
+        const target = enemies[0];
+        if (!target) return;
+        if (possibleAttack(unit,target)) {
+          attack(unit,target);
+          if (!gameOver) window.setTimeout(takeAction, 420);
+          return;
+        }
+        const moves = [];
+        for (let row=0; row<rows; row++) for (let column=0; column<columns; column++) if (possibleMove(unit,row,column)) moves.push({row,column});
+        moves.sort((a,b) => distance(a,target) - distance(b,target));
+        if (moves[0]) { unit.row=moves[0].row; unit.column=moves[0].column; unit.acted=true; status.textContent = `Robot ${unitTypes[unit.type].name} advances.`; render(); }
+        window.setTimeout(takeAction, 420);
+      }
+      takeAction();
+    }
+
+    function startGame(nextMode) {
+      mode = nextMode; turn = 0; selectedId = null; gameOver = false; units = createUnits();
+      startScreen.classList.add("hidden"); finishScreen.classList.add("hidden");
+      status.textContent = "Blue army, choose a unit to begin."; render();
+    }
+
+    document.querySelectorAll("[data-mode]").forEach(button => button.addEventListener("click", () => startGame(button.dataset.mode)));
+    endTurnButton.addEventListener("click", endTurn);
+    document.getElementById("play-again").addEventListener("click", () => startGame(mode));
+    render();
+  </script>
+</body>
+</html>

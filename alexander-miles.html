@@ -1,0 +1,682 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An interactive slideshow about inventor Alexander Miles.">
+    <title>Alexander Miles | The Automatic Elevator Door</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font-family: Arial, sans-serif;
+        --gold: #f5bc46;
+        --ink: #edf4ff;
+        --midnight: #071321;
+        --muted: #b6c8df;
+        --steel: #7892b1;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        align-items: flex-start;
+        background:
+          radial-gradient(circle at 20% 10%, #1c4268 0, transparent 32%),
+          linear-gradient(135deg, #0c1e32, #050b14 70%);
+        color: var(--ink);
+        display: flex;
+        justify-content: center;
+        margin: 0;
+        min-height: 100vh;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      button {
+        font: inherit;
+      }
+
+      .back-link {
+        color: var(--ink);
+        font-size: .9rem;
+        left: 1.25rem;
+        position: fixed;
+        text-decoration: none;
+        top: 1.25rem;
+        z-index: 20;
+      }
+
+      .back-link:hover,
+      .back-link:focus-visible {
+        color: var(--gold);
+      }
+
+      .slideshow {
+        min-height: 100vh;
+        max-width: 1180px;
+        overflow: visible;
+        position: relative;
+        width: 100%;
+      }
+
+      .elevator-intro,
+      .slides {
+        inset: 0;
+        position: absolute;
+      }
+
+      .elevator-intro {
+        align-items: center;
+        cursor: pointer;
+        display: flex;
+        justify-content: center;
+        isolation: isolate;
+        overflow: hidden;
+        transition: opacity .55s ease, visibility .55s ease;
+      }
+
+      .elevator-intro {
+        bottom: auto;
+        height: 100svh;
+      }
+
+      .elevator-intro::before {
+        background: repeating-linear-gradient(90deg, #0000 0 52px, #ffffff08 53px 54px);
+        content: "";
+        inset: 0;
+        position: absolute;
+      }
+
+      .elevator-intro.opening {
+        cursor: default;
+        pointer-events: none;
+      }
+
+      .elevator-intro.opening .door--left { transform: translateX(-105%); }
+      .elevator-intro.opening .door--right { transform: translateX(105%); }
+      .elevator-intro.opening .intro-question { opacity: 0; transform: scale(.96); }
+      .elevator-intro.opening .reveal-name { opacity: 1; transform: translateY(0); }
+
+      .elevator-intro.hidden {
+        opacity: 0;
+        visibility: hidden;
+      }
+
+      .door {
+        background:
+          linear-gradient(90deg, #00000066, transparent 4%, #ffffff12 48%, #00000055),
+          repeating-linear-gradient(90deg, #315270 0 9px, #203b55 10px 24px, #112a42 25px 32px);
+        border: 5px solid #6f8da8;
+        box-shadow: inset 0 0 35px #02070d, 0 0 45px #000b;
+        height: 100%;
+        position: absolute;
+        top: 0;
+        transition: transform 1.15s cubic-bezier(.7, 0, .3, 1);
+        width: 50%;
+        z-index: 2;
+      }
+
+      .door--left { left: 0; border-left: 0; }
+      .door--right { border-right: 0; right: 0; }
+
+      .door-copy {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        justify-content: center;
+        padding: 2rem;
+        position: absolute;
+        text-align: center;
+        width: 200%;
+      }
+
+      .door--left .door-copy { left: 0; }
+      .door--right .door-copy { right: 0; }
+      .door-copy { display: none; }
+
+      .intro-question {
+        align-items: center;
+        display: flex;
+        flex-direction: column;
+        inset: 0;
+        justify-content: center;
+        padding: 2rem;
+        pointer-events: none;
+        position: absolute;
+        text-align: center;
+        transition: opacity .35s ease, transform .35s ease;
+        z-index: 4;
+      }
+
+      .question-heading {
+        color: #fff7db;
+        font-family: Georgia, serif;
+        font-size: clamp(2.2rem, 5vw, 4.7rem);
+        line-height: 1;
+        max-width: 760px;
+        text-shadow: 0 4px 15px #000;
+      }
+
+      .intro-question > span {
+        color: var(--gold);
+        font-size: .84rem;
+        font-weight: bold;
+        letter-spacing: .15em;
+        margin: 2rem 0 0;
+        text-transform: uppercase;
+      }
+
+      .reveal-name {
+        color: #fff5cb;
+        font-family: Georgia, serif;
+        font-size: clamp(3rem, 9vw, 7.5rem);
+        font-weight: bold;
+        left: 0;
+        opacity: 0;
+        position: absolute;
+        right: 0;
+        text-align: center;
+        text-shadow: 0 0 22px #f7bd4c, 0 5px 16px #000;
+        top: 42%;
+        transform: translateY(18px);
+        transition: opacity .45s ease .4s, transform .45s ease .4s;
+        z-index: 1;
+      }
+
+      .door-copy h1 {
+        color: #fff7db;
+        font-family: Georgia, serif;
+        font-size: clamp(2.2rem, 5vw, 4.7rem);
+        line-height: 1;
+        margin: 0;
+        max-width: 760px;
+        text-shadow: 0 4px 15px #000;
+      }
+
+      .door-copy p {
+        color: var(--gold);
+        font-size: .84rem;
+        font-weight: bold;
+        letter-spacing: .15em;
+        margin: 2rem 0 0;
+        text-transform: uppercase;
+      }
+
+      .elevator-light {
+        background: #e5faff;
+        border: 4px solid #84b9d1;
+        border-radius: 50%;
+        box-shadow: 0 0 18px #9bddff, 0 0 45px #3d8dbc;
+        height: 13px;
+        left: calc(50% - 6px);
+        position: absolute;
+        top: 10%;
+        width: 13px;
+        z-index: 3;
+      }
+
+      .slides {
+        opacity: 0;
+        pointer-events: none;
+        position: relative;
+        transition: opacity .5s ease;
+        visibility: hidden;
+      }
+
+      .slides.visible {
+        opacity: 1;
+        pointer-events: auto;
+        visibility: visible;
+      }
+
+      .slide {
+        align-items: center;
+        display: none;
+        min-height: 100vh;
+        justify-content: center;
+        padding: clamp(5rem, 10vw, 8rem) clamp(1.5rem, 9vw, 8rem);
+      }
+
+      .slide.active {
+        animation: slide-in .55s ease both;
+        display: flex;
+      }
+
+      @keyframes slide-in {
+        from { opacity: 0; transform: translateY(28px) scale(.98); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+      }
+
+      .slide-content {
+        display: grid;
+        gap: clamp(2rem, 7vw, 7rem);
+        grid-template-columns: minmax(0, 1.1fr) minmax(210px, .7fr);
+        max-width: 950px;
+        width: 100%;
+      }
+
+      .slide-copy {
+        max-width: 650px;
+      }
+
+      .eyebrow {
+        color: var(--gold);
+        font-size: .76rem;
+        font-weight: bold;
+        letter-spacing: .15em;
+        margin: 0 0 1.25rem;
+        text-transform: uppercase;
+      }
+
+      h2 {
+        font-family: Georgia, serif;
+        font-size: clamp(2.3rem, 5vw, 5rem);
+        letter-spacing: -.05em;
+        line-height: 1.02;
+        margin: 0;
+      }
+
+      .slide-copy > p:not(.eyebrow) {
+        color: #d7e3f1;
+        font-size: clamp(1.08rem, 2vw, 1.35rem);
+        line-height: 1.65;
+        margin: 1.6rem 0 0;
+      }
+
+      .visual {
+        align-items: center;
+        background: linear-gradient(145deg, #234967, #10243a);
+        border: 1px solid #a6d8ff55;
+        box-shadow: 16px 18px 0 #02091466, 0 0 34px #5fb9e033;
+        display: flex;
+        justify-content: center;
+        min-height: 280px;
+        overflow: hidden;
+        position: relative;
+        border-radius: 20px;
+      }
+
+      .visual::after {
+        background: repeating-linear-gradient(135deg, #ffffff0d 0 2px, transparent 2px 14px);
+        content: "";
+        inset: 0;
+        pointer-events: none;
+        position: absolute;
+      }
+
+      .visual.portrait-photo {
+        background: #080b10;
+        padding: 16px;
+      }
+
+      .visual.portrait-photo::after { display: none; }
+
+      .miles-photo {
+        height: 100%;
+        margin: 0;
+        position: relative;
+        text-align: center;
+        width: 100%;
+        z-index: 1;
+      }
+
+      .miles-photo img {
+        border: 2px solid #d5b26e;
+        box-shadow: 0 0 0 7px #3a281e, 0 0 28px #d5b26e66;
+        display: block;
+        height: 100%;
+        margin: auto;
+        max-height: 340px;
+        max-width: 100%;
+        object-fit: contain;
+      }
+
+      .portrait {
+        align-items: center;
+        background: radial-gradient(circle at 50% 30%, #e6bf82 0 10%, #8c5635 11% 22%, #1a1b22 23% 36%, transparent 37%);
+        border: 8px solid #d5b26e;
+        border-radius: 50%;
+        box-shadow: 0 0 0 12px #593a27, 0 0 0 15px #d5b26e;
+        height: 170px;
+        position: relative;
+        width: 170px;
+        z-index: 1;
+      }
+
+      .portrait::before {
+        background:
+          radial-gradient(ellipse at 37% 45%, #171b25 0 4%, transparent 5%),
+          radial-gradient(ellipse at 64% 45%, #171b25 0 4%, transparent 5%),
+          linear-gradient(#38261f 0 56%, #271b18 57%);
+        border-radius: 47% 47% 42% 42%;
+        content: "";
+        height: 92px;
+        left: 39px;
+        position: absolute;
+        top: 38px;
+        width: 92px;
+      }
+
+      .portrait::after {
+        bottom: -7px;
+        color: #fff8df;
+        content: "A. M.";
+        font-family: Georgia, serif;
+        font-size: 1.2rem;
+        font-weight: bold;
+        left: 0;
+        position: absolute;
+        right: 0;
+        text-align: center;
+      }
+
+      .barber-pole {
+        background: repeating-linear-gradient(140deg, #d74045 0 13px, #f8f6e8 14px 26px, #2e74a6 27px 39px);
+        border: 7px solid #e1bd70;
+        border-radius: 30px;
+        box-shadow: 0 0 20px #0009;
+        height: 190px;
+        position: relative;
+        width: 70px;
+        z-index: 1;
+      }
+
+      .barber-pole::before,
+      .barber-pole::after {
+        background: #e1bd70;
+        border-radius: 50%;
+        content: "";
+        height: 20px;
+        left: -9px;
+        position: absolute;
+        width: 74px;
+      }
+
+      .barber-pole::before { top: -17px; }
+      .barber-pole::after { bottom: -17px; }
+
+      .family {
+        align-items: flex-end;
+        display: flex;
+        gap: 14px;
+        height: 190px;
+        position: relative;
+        z-index: 1;
+      }
+
+      .person {
+        background: linear-gradient(#1e2d4d 0 28%, #ddb47d 29% 42%, #573a5d 43%);
+        border-radius: 48% 48% 12px 12px;
+        height: 160px;
+        width: 76px;
+      }
+
+      .person--child {
+        background: linear-gradient(#1e2d4d 0 28%, #ddb47d 29% 42%, #537758 43%);
+        height: 116px;
+        width: 57px;
+      }
+
+      .person--woman {
+        background: linear-gradient(#362744 0 31%, #e0b07b 32% 45%, #965852 46%);
+        height: 172px;
+      }
+
+      .shaft {
+        background: linear-gradient(90deg, #34465c 0 8%, #0a111a 8% 92%, #34465c 92%);
+        box-shadow: inset 0 0 35px #000;
+        height: 210px;
+        position: relative;
+        width: 150px;
+        z-index: 1;
+      }
+
+      .shaft::before {
+        background: #a7d6ef;
+        border: 6px solid #d7a951;
+        box-shadow: 0 0 17px #9ae5ff;
+        content: "";
+        height: 60px;
+        left: 20px;
+        position: absolute;
+        top: 10px;
+        width: 98px;
+      }
+
+      .safety-line {
+        background: var(--gold);
+        box-shadow: 0 0 13px var(--gold);
+        height: 5px;
+        left: 0;
+        position: absolute;
+        top: 125px;
+        width: 100%;
+      }
+
+      .hall {
+        background: linear-gradient(180deg, #192e45, #100d18);
+      }
+
+      .hall .portrait {
+        box-shadow: 0 0 0 12px #593a27, 0 0 0 15px #d5b26e, 0 0 34px #f4c864;
+      }
+
+      .navigation {
+        align-items: center;
+        bottom: 1.5rem;
+        display: flex;
+        gap: .75rem;
+        justify-content: center;
+        left: 0;
+        position: absolute;
+        right: 0;
+      }
+
+      .navigation button {
+        background: #ffffff10;
+        border: 1px solid #b9d7ed88;
+        color: var(--ink);
+        cursor: pointer;
+        min-width: 115px;
+        padding: .8rem 1rem;
+      }
+
+      .navigation button:hover:not(:disabled),
+      .navigation button:focus-visible {
+        background: var(--gold);
+        border-color: var(--gold);
+        color: #172433;
+        outline: none;
+      }
+
+      .navigation button:disabled {
+        cursor: not-allowed;
+        opacity: .35;
+      }
+
+      .progress {
+        display: flex;
+        gap: 6px;
+      }
+
+      .progress span {
+        background: #ffffff44;
+        border-radius: 999px;
+        height: 7px;
+        transition: background .2s ease, width .2s ease;
+        width: 7px;
+      }
+
+      .progress span.active {
+        background: var(--gold);
+        width: 26px;
+      }
+
+      .hint {
+        bottom: 1.55rem;
+        color: #b9c9da;
+        font-size: .78rem;
+        position: absolute;
+        right: 1.5rem;
+      }
+
+      @media (max-width: 700px) {
+        .slideshow { min-height: 100vh; }
+        .slide-content { grid-template-columns: 1fr; }
+        .visual { display: none; }
+        .hint { display: none; }
+        .slide { padding-bottom: 7rem; }
+        .question-heading { font-size: clamp(2rem, 10vw, 3.2rem); }
+      }
+
+      @media (max-height: 620px) {
+        .question-heading { font-size: clamp(1.6rem, 7vh, 3rem); }
+        .intro-question > span { margin-top: 1rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <a class="back-link" href="index.html">← All games</a>
+    <main class="slideshow" aria-label="Alexander Miles slideshow">
+      <button class="elevator-intro" id="elevator-intro" type="button" aria-label="Open the elevator doors to begin">
+        <span class="door door--left"></span>
+        <span class="door door--right"></span>
+        <span class="intro-question" aria-hidden="true"><strong class="question-heading">Who created the automatic elevator door?</strong><span>Click to open the elevator</span></span>
+        <span class="reveal-name" aria-hidden="true">Alexander Miles</span>
+        <span class="elevator-light" aria-hidden="true"></span>
+      </button>
+
+      <section class="slides" id="slides" aria-live="polite">
+        <article class="slide active">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 1 · A safer ride</p>
+              <h2>Alexander Miles patented the automatic elevator door on October 11, 1887.</h2>
+              <p>His invention helped make elevator travel safer by improving the way elevator doors opened and closed.</p>
+            </div>
+            <div class="visual portrait-photo"><figure class="miles-photo"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Alexander-Miles.png/500px-Alexander-Miles.png" alt="Historical portrait of Alexander Miles"></figure></div>
+          </div>
+        </article>
+        <article class="slide">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 2 · Early years</p>
+              <h2>Alexander Miles was born on May 18, 1838, in Pickaway County, Ohio.</h2>
+              <p>He later moved to Waukesha, Wisconsin, where he earned a living as a barber.</p>
+            </div>
+            <div class="visual"><span class="barber-pole" aria-hidden="true"></span></div>
+          </div>
+        </article>
+        <article class="slide">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 3 · A new family</p>
+              <h2>After moving to Winona, Minnesota, Alexander met and married Mrs. Candace J. Dunlap of La Porte, Indiana.</h2>
+              <p>She was a widow with two children.</p>
+            </div>
+            <div class="visual"><span class="family" aria-hidden="true"><span class="person"></span><span class="person person--woman"></span><span class="person person--child"></span><span class="person person--child"></span></span></div>
+          </div>
+        </article>
+        <article class="slide">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 4 · Grace</p>
+              <h2>Together, Alexander Miles and Mrs. Candace J. Dunlap had a daughter named Grace.</h2>
+              <p>Grace was born in 1876.</p>
+            </div>
+            <div class="visual"><span class="family" aria-hidden="true"><span class="person"></span><span class="person person--woman"></span><span class="person person--child"></span></span></div>
+          </div>
+        </article>
+        <article class="slide">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 5 · A story of safety</p>
+              <h2>Some people believed Alexander got the idea for his elevator-door mechanism after Grace accidentally fell down a shaft, almost ending her life.</h2>
+              <p>Whether or not the story is true, his invention focused attention on making elevator travel safer.</p>
+            </div>
+            <div class="visual"><span class="shaft" aria-hidden="true"><span class="safety-line"></span></span></div>
+          </div>
+        </article>
+        <article class="slide">
+          <div class="slide-content">
+            <div class="slide-copy">
+              <p class="eyebrow">Slide 6 · A lasting legacy</p>
+              <h2>Alexander Miles died in 1918 and was inducted into the National Inventors Hall of Fame in 2007.</h2>
+              <p>His work is remembered as an important contribution to elevator safety and invention.</p>
+            </div>
+            <div class="visual portrait-photo"><figure class="miles-photo"><img src="https://thumb.wikimedia.org/wikipedia/commons/thumb/5/51/Alexander-Miles.png/500px-Alexander-Miles.png" alt="Historical portrait of Alexander Miles"></figure></div>
+          </div>
+        </article>
+
+        <div class="navigation" aria-label="Slideshow navigation">
+          <button id="previous" type="button">← Previous</button>
+          <div class="progress" id="progress" aria-label="Slide progress"></div>
+          <button id="next" type="button">Next →</button>
+        </div>
+        <span class="hint">Use arrow keys to navigate</span>
+      </section>
+    </main>
+    <script>
+      const intro = document.getElementById("elevator-intro");
+      const slidesContainer = document.getElementById("slides");
+      const slides = [...document.querySelectorAll(".slide")];
+      const progress = document.getElementById("progress");
+      const previous = document.getElementById("previous");
+      const next = document.getElementById("next");
+      let currentSlide = 0;
+      let started = false;
+
+      slides.forEach((_, index) => {
+        const dot = document.createElement("span");
+        dot.setAttribute("aria-label", `Slide ${index + 1} of ${slides.length}`);
+        progress.append(dot);
+      });
+
+      function showSlide(index) {
+        currentSlide = Math.max(0, Math.min(index, slides.length - 1));
+        slides.forEach((slide, slideIndex) => {
+          slide.classList.toggle("active", slideIndex === currentSlide);
+        });
+        [...progress.children].forEach((dot, dotIndex) => {
+          dot.classList.toggle("active", dotIndex === currentSlide);
+        });
+        previous.disabled = currentSlide === 0;
+        next.textContent = currentSlide === slides.length - 1 ? "Start over ↺" : "Next →";
+      }
+
+      function begin() {
+        if (started) return;
+        started = true;
+        intro.classList.add("opening");
+        window.setTimeout(() => {
+          intro.classList.add("hidden");
+          slidesContainer.classList.add("visible");
+          showSlide(0);
+        }, 1800);
+      }
+
+      intro.addEventListener("click", begin);
+      previous.addEventListener("click", () => showSlide(currentSlide - 1));
+      next.addEventListener("click", () => {
+        if (currentSlide === slides.length - 1) {
+          showSlide(0);
+          return;
+        }
+        showSlide(currentSlide + 1);
+      });
+
+      window.addEventListener("keydown", (event) => {
+        if (!started) {
+          if (event.key === "Enter" || event.key === " ") begin();
+          return;
+        }
+        if (event.key === "ArrowLeft") showSlide(currentSlide - 1);
+        if (event.key === "ArrowRight") {
+          if (currentSlide === slides.length - 1) showSlide(0);
+          else showSlide(currentSlide + 1);
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CoolCart | First-Person Racing</title>
+  <style>
+    :root { color-scheme: dark; font-family: Arial, sans-serif; --ink:#f4f8ff; --muted:#b9cae6; --gold:#ffd44f; }
+    * { box-sizing:border-box; }
+    body { background:radial-gradient(circle at top,#325e91,#08111e 70%); color:var(--ink); margin:0; min-height:100vh; }
+    main { margin:auto; max-width:1100px; padding:24px 16px 42px; }
+    .topline { align-items:center; display:flex; gap:14px; justify-content:space-between; margin-bottom:18px; } .back { color:#d5e8ff; text-decoration:none; } .back:hover,.back:focus-visible { color:var(--gold); }
+    h1 { font-size:clamp(2.4rem,7vw,4.6rem); letter-spacing:-.07em; margin:0; text-align:center; } .tagline { color:var(--muted); margin:7px auto 20px; text-align:center; }
+    .game-shell { background:#102037d9; border:1px solid #52759d; border-radius:22px; box-shadow:0 20px 55px #0008; overflow:hidden; position:relative; }
+    .hud { align-items:center; background:#0a1424; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; padding:12px 16px; }
+    .stat { color:var(--muted); font-size:.82rem; font-weight:bold; letter-spacing:.06em; text-transform:uppercase; } .stat b { color:var(--ink); font-size:1.13rem; letter-spacing:0; margin-left:5px; }
+    .boost-meter { background:#253950; border-radius:99px; display:inline-block; height:12px; margin-left:5px; overflow:hidden; vertical-align:middle; width:130px; } .boost-meter span { background:linear-gradient(90deg,#ff9e38,#ffe36b); display:block; height:100%; transition:width .1s; width:0; }
+    canvas { display:block; max-height:72vh; width:100%; }
+    .overlay { align-items:center; background:linear-gradient(#071321bf,#071321ec); display:flex; inset:0; justify-content:center; padding:20px; position:absolute; text-align:center; z-index:2; } .overlay.hidden { display:none; }
+    .overlay-card { max-width:750px; } .overlay h2 { font-size:clamp(2.3rem,6vw,4rem); margin:0 0 12px; } .overlay p { color:#d2e1f4; line-height:1.6; margin:0 auto 22px; }
+    .track-grid { display:grid; gap:12px; grid-template-columns:repeat(3,minmax(0,1fr)); margin:22px 0; text-align:left; }
+    .track-choice { background:#1c314b; border:2px solid #5b7698; color:var(--ink); cursor:pointer; min-height:140px; padding:16px; text-align:left; } .track-choice:hover,.track-choice:focus-visible,.track-choice.selected { border-color:var(--gold); box-shadow:0 0 0 2px #ffd44f44; outline:none; }
+    .track-choice strong { display:block; font-size:1.15rem; margin-bottom:8px; } .track-choice small { color:#bfd1e8; line-height:1.45; }
+    .track-swatch { border-radius:99px; display:block; height:9px; margin-bottom:13px; width:100%; } .sunset { background:linear-gradient(90deg,#ef7a55,#ffc954); } .ice { background:linear-gradient(90deg,#bff7ff,#4e9ef3); } .neon { background:linear-gradient(90deg,#fb4bba,#884cff); }
+    button { background:var(--gold); border:0; border-radius:11px; color:#122236; cursor:pointer; font:inherit; font-weight:bold; padding:13px 20px; } button:hover,button:focus-visible { background:#fff0a1; outline:3px solid #ffffff66; }
+    .controls { color:var(--muted); font-size:.88rem; margin:16px 0 0; text-align:center; } kbd { background:#0c1726; border:1px solid #5b7698; border-radius:4px; color:#fff; padding:2px 6px; }
+    .legend { color:var(--muted); display:flex; flex-wrap:wrap; font-size:.82rem; gap:14px; justify-content:center; margin-top:13px; } .dot { border-radius:50%; display:inline-block; height:10px; margin-right:4px; width:10px; } .dot.coin { background:var(--gold); } .dot.boost { background:#55dfff; }
+    @media (max-width:680px) { .track-grid { grid-template-columns:1fr; } .hud { gap:8px; justify-content:center; } .boost-meter { width:95px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline"><a class="back" href="index.html">← All games</a><span>Original first-person racing</span></div>
+    <h1>CoolCart</h1>
+    <p class="tagline">Choose a track, race from the driver's seat, collect coins, and boost past your rivals.</p>
+    <section class="game-shell" aria-label="CoolCart first-person racing game">
+      <div class="hud">
+        <span class="stat">Track <b id="track-name">Sunset Loop</b></span>
+        <span class="stat">Lap <b id="lap">1 / 3</b></span>
+        <span class="stat">Place <b id="place">4th</b></span>
+        <span class="stat">Speed <b id="speed">0</b></span>
+        <span class="stat">Boost <span class="boost-meter"><span id="boost"></span></span></span>
+      </div>
+      <canvas id="race" width="960" height="600" aria-label="First-person 3D-style race track"></canvas>
+      <div class="overlay" id="start-screen">
+        <div class="overlay-card">
+          <h2>Choose your CoolCart track</h2>
+          <p>Every track has its own landscape, curves, and road style. Finish three laps before the rival CoolCarts.</p>
+          <div class="track-grid" id="track-grid">
+            <button class="track-choice selected" data-track="sunset" type="button"><i class="track-swatch sunset"></i><strong>Sunset Loop</strong><small>Warm skies, rolling turns, and a bright coastal road.</small></button>
+            <button class="track-choice" data-track="ice" type="button"><i class="track-swatch ice"></i><strong>Ice Ridge</strong><small>Fast blue curves through a snowy mountain pass.</small></button>
+            <button class="track-choice" data-track="neon" type="button"><i class="track-swatch neon"></i><strong>Neon Nightway</strong><small>Electric city lights and sharp night-race bends.</small></button>
+          </div>
+          <button id="start-race" type="button">Start race</button>
+          <p class="controls"><kbd>↑</kbd>/<kbd>W</kbd> drive &nbsp; <kbd>↓</kbd>/<kbd>S</kbd> brake &nbsp; <kbd>←</kbd><kbd>→</kbd> steer &nbsp; <kbd>Shift</kbd> drift &nbsp; <kbd>Space</kbd> boost</p>
+        </div>
+      </div>
+      <div class="overlay hidden" id="finish-screen">
+        <div class="overlay-card"><h2 id="finish-title">Race complete!</h2><p id="finish-copy"></p><button id="race-again" type="button">Choose another track</button></div>
+      </div>
+    </section>
+    <div class="legend"><span><i class="dot coin"></i>Coin: +20 boost</span><span><i class="dot boost"></i>Power Spark: +45 boost</span><span>Rival cars swerve and use their own boosts.</span></div>
+  </main>
+  <script>
+    const canvas = document.getElementById("race");
+    const ctx = canvas.getContext("2d");
+    const lapElement = document.getElementById("lap");
+    const placeElement = document.getElementById("place");
+    const speedElement = document.getElementById("speed");
+    const boostElement = document.getElementById("boost");
+    const trackNameElement = document.getElementById("track-name");
+    const startScreen = document.getElementById("start-screen");
+    const finishScreen = document.getElementById("finish-screen");
+    const finishTitle = document.getElementById("finish-title");
+    const finishCopy = document.getElementById("finish-copy");
+    const keys = new Set();
+    const lapsToWin = 3;
+    const drawDistance = 1500;
+    const horizon = 170;
+    const tracks = {
+      sunset: { name:"Sunset Loop", length:9000, sky:["#f79062","#fdcf6d","#75b4d7"], ground:"#5baf68", road:"#35404b", edge:"#f7d15c", curve:p=>Math.sin(p/440)*.55+Math.sin(p/890)*.35, skyline:"#d86f5b" },
+      ice: { name:"Ice Ridge", length:9600, sky:["#9ce5ff","#74b9f4","#3d75aa"], ground:"#dfeef2", road:"#475564", edge:"#b8fbff", curve:p=>Math.sin(p/300)*.7+Math.sin(p/680)*.55, skyline:"#8cb8c9" },
+      neon: { name:"Neon Nightway", length:8500, sky:["#19143f","#502f8c","#e95ca2"], ground:"#22223c", road:"#252238", edge:"#ff63c8", curve:p=>Math.sin(p/360)*.78+Math.sin(p/740)*.42, skyline:"#8c54c9" }
+    };
+    let activeTrack = tracks.sunset;
+    let selectedTrack = "sunset";
+    let player;
+    let rivals;
+    let coins;
+    let powerSparks;
+    let running = false;
+    let lastFrame = 0;
+    let animation;
+
+    function wrapDistance(value) {
+      return ((value % activeTrack.length) + activeTrack.length) % activeTrack.length;
+    }
+
+    function forwardDistance(from, to) {
+      return wrapDistance(to - from);
+    }
+
+    function resetRace() {
+      player = { distance:0, lateral:0, cameraLateral:0, speed:0, boost:0, boostTime:0, driftCharge:0, drifting:false, steer:0, throttle:0, curveDrift:0, lap:1 };
+      rivals = [
+        { color:"#ff715b", distance:-150, lateral:-.3, speed:492, seed:180, boostUntil:0, nextBoost:760 },
+        { color:"#a674e7", distance:-270, lateral:.27, speed:484, seed:440, boostUntil:0, nextBoost:1040 },
+        { color:"#ffd44f", distance:-390, lateral:.04, speed:476, seed:760, boostUntil:0, nextBoost:1320 }
+      ];
+      coins = Array.from({ length:20 }, (_, index) => ({ distance:420 + index * 430, lateral:index % 3 === 0 ? -.38 : index % 3 === 1 ? .35 : 0, active:true, returnAt:0 }));
+      powerSparks = Array.from({ length:10 }, (_, index) => ({ distance:760 + index * 820, lateral:index % 2 ? -.32 : .3, active:true, returnAt:0 }));
+      trackNameElement.textContent = activeTrack.name;
+      lapElement.textContent = "1 / 3"; placeElement.textContent = "4th"; speedElement.textContent = "0"; boostElement.style.width = "0%";
+    }
+
+    function trackCenter(distance, depth) {
+      const currentCurve = activeTrack.curve(wrapDistance(player.distance));
+      const futureCurve = activeTrack.curve(wrapDistance(distance));
+      return canvas.width / 2 + (futureCurve - currentCurve) * (1 - depth) * 310 - player.cameraLateral * depth * 170;
+    }
+
+    function project(distanceAhead, lateral) {
+      const depth = 1 - distanceAhead / drawDistance;
+      const y = horizon + Math.pow(depth, 1.7) * 500;
+      const roadWidth = 34 + depth * depth * 800;
+      return { x: trackCenter(player.distance + distanceAhead, depth) + lateral * roadWidth, y, scale:depth };
+    }
+
+    function updatePlayer(dt, now) {
+      const accelerating = keys.has("ArrowUp") || keys.has("w") || keys.has("W");
+      const braking = keys.has("ArrowDown") || keys.has("s") || keys.has("S");
+      const boosting = (keys.has(" ") || keys.has("Spacebar")) && player.boost > 0;
+      const steer = (keys.has("ArrowLeft") || keys.has("a") || keys.has("A") ? -1 : 0) + (keys.has("ArrowRight") || keys.has("d") || keys.has("D") ? 1 : 0);
+      const drifting = (keys.has("Shift") || keys.has("ShiftLeft") || keys.has("ShiftRight")) && steer !== 0 && player.speed > 150;
+      const targetThrottle = accelerating ? 1 : braking ? -1 : 0;
+      player.throttle += (targetThrottle - player.throttle) * Math.min(1, dt * 8);
+      player.steer += (steer - player.steer) * Math.min(1, dt * 9);
+      if (player.throttle > 0) player.speed += 560 * player.throttle * dt;
+      if (player.throttle < 0) player.speed += 245 * player.throttle * dt;
+      player.speed = Math.max(0, player.speed - 28 * dt);
+      if (boosting) {
+        player.speed = Math.min(850, player.speed + 700 * dt);
+        player.boost = Math.max(0, player.boost - 26 * dt);
+        player.boostTime = now + 90;
+      }
+      const offRoad = Math.abs(player.lateral) > 1.08;
+      player.speed = Math.min(offRoad ? 270 : boosting ? 850 : 650, player.speed);
+      const curveBefore = activeTrack.curve(wrapDistance(player.distance));
+      if (drifting) player.driftCharge = Math.min(100, player.driftCharge + 38 * dt);
+      else if (player.drifting && player.driftCharge >= 18) {
+        player.boost = Math.min(100, player.boost + player.driftCharge * .55);
+        player.speed = Math.min(850, player.speed + player.driftCharge * 1.8);
+        player.boostTime = now + 520;
+        player.driftCharge = 0;
+      } else if (!drifting) player.driftCharge = 0;
+      player.drifting = drifting;
+      player.lateral = Math.max(-1.48, Math.min(1.48, player.lateral + player.steer * (.5 + player.speed / 380) * (drifting ? 1.48 : 1) * dt));
+      player.distance += player.speed * dt;
+      const curveAfter = activeTrack.curve(wrapDistance(player.distance));
+      const targetCurveDrift = -(curveAfter - curveBefore) * 1.6;
+      player.curveDrift += (targetCurveDrift - player.curveDrift) * Math.min(1, dt * 10);
+      player.lateral = Math.max(-1.48, Math.min(1.48, player.lateral + player.curveDrift));
+      player.cameraLateral += (player.lateral - player.cameraLateral) * Math.min(1, dt * 7);
+      player.lap = Math.min(lapsToWin, Math.floor(player.distance / activeTrack.length) + 1);
+      coins.forEach((coin) => {
+        if (!coin.active && now >= coin.returnAt) coin.active = true;
+        const ahead = forwardDistance(player.distance, coin.distance);
+        if (coin.active && (ahead < 30 || ahead > activeTrack.length - 30) && Math.abs(player.lateral - coin.lateral) < .18) {
+          coin.active = false; coin.returnAt = now + 4300; player.boost = Math.min(100, player.boost + 20);
+        }
+      });
+      powerSparks.forEach((spark) => {
+        if (!spark.active && now >= spark.returnAt) spark.active = true;
+        const ahead = forwardDistance(player.distance, spark.distance);
+        if (spark.active && (ahead < 34 || ahead > activeTrack.length - 34) && Math.abs(player.lateral - spark.lateral) < .2) {
+          spark.active = false; spark.returnAt = now + 6200;
+          player.boost = Math.min(100, player.boost + 45); player.speed = Math.min(850, player.speed + 130); player.boostTime = now + 400;
+        }
+      });
+      if (player.distance % 920 < 28 && Math.abs(player.lateral) < .22) player.boost = Math.min(100, player.boost + 55 * dt);
+    }
+
+    function updateRivals(dt) {
+      rivals.forEach((rival) => {
+        if (rival.distance >= rival.nextBoost) {
+          rival.boostUntil = rival.distance + 220;
+          rival.nextBoost += 1050 + (rival.seed % 260);
+        }
+        rival.distance += (rival.speed + (rival.distance < rival.boostUntil ? 82 : 0)) * dt;
+        const targetLane = Math.sin((rival.distance + rival.seed) / 410) * .48;
+        rival.lateral += (targetLane - rival.lateral) * dt * 1.5;
+      });
+    }
+
+    function standings() {
+      return [{ id:"player", score:player.distance }, ...rivals.map((rival, index) => ({ id:index, score:rival.distance }))].sort((a,b) => b.score - a.score);
+    }
+
+    function drawBackground() {
+      const gradient = ctx.createLinearGradient(0, 0, 0, 230);
+      gradient.addColorStop(0, activeTrack.sky[0]); gradient.addColorStop(.58, activeTrack.sky[1]); gradient.addColorStop(1, activeTrack.sky[2]);
+      ctx.fillStyle = gradient; ctx.fillRect(0, 0, canvas.width, horizon);
+      ctx.fillStyle = activeTrack.ground; ctx.fillRect(0, horizon, canvas.width, canvas.height - horizon);
+      ctx.fillStyle = activeTrack.skyline + "aa";
+      for (let x = -20; x < canvas.width + 30; x += 38) {
+        const height = 14 + Math.abs(Math.sin(x * .065)) * 40;
+        ctx.fillRect(x, horizon - height, 28, height);
+      }
+      ctx.fillStyle = activeTrack.name === "Neon Nightway" ? "#fff5b8" : "#fff3c9";
+      ctx.beginPath(); ctx.arc(activeTrack.name === "Sunset Loop" ? 760 : 130, 74, activeTrack.name === "Neon Nightway" ? 7 : 34, 0, Math.PI * 2); ctx.fill();
+    }
+
+    function drawRoad() {
+      const strips = 115;
+      for (let index = 0; index < strips; index++) {
+        const far = index / strips;
+        const near = (index + 1) / strips;
+        const farDistance = drawDistance * (1 - far);
+        const nearDistance = drawDistance * (1 - near);
+        const farProjection = project(farDistance, 0);
+        const nearProjection = project(nearDistance, 0);
+        const farWidth = 34 + farProjection.scale * farProjection.scale * 800;
+        const nearWidth = 34 + nearProjection.scale * nearProjection.scale * 800;
+        const stripe = Math.floor((player.distance + farDistance) / 90) % 2;
+        ctx.fillStyle = stripe ? activeTrack.edge : "#f4f0e2";
+        ctx.beginPath();
+        ctx.moveTo(farProjection.x - farWidth * 1.12, farProjection.y); ctx.lineTo(farProjection.x + farWidth * 1.12, farProjection.y);
+        ctx.lineTo(nearProjection.x + nearWidth * 1.12, nearProjection.y); ctx.lineTo(nearProjection.x - nearWidth * 1.12, nearProjection.y); ctx.fill();
+        ctx.fillStyle = activeTrack.road;
+        ctx.beginPath();
+        ctx.moveTo(farProjection.x - farWidth, farProjection.y); ctx.lineTo(farProjection.x + farWidth, farProjection.y);
+        ctx.lineTo(nearProjection.x + nearWidth, nearProjection.y); ctx.lineTo(nearProjection.x - nearWidth, nearProjection.y); ctx.fill();
+        if (stripe) {
+          ctx.fillStyle = "#fff8d8";
+          ctx.beginPath();
+          ctx.moveTo(farProjection.x - farWidth * .03, farProjection.y); ctx.lineTo(farProjection.x + farWidth * .03, farProjection.y);
+          ctx.lineTo(nearProjection.x + nearWidth * .025, nearProjection.y); ctx.lineTo(nearProjection.x - nearWidth * .025, nearProjection.y); ctx.fill();
+        }
+      }
+    }
+
+    function drawCoin(coin) {
+      if (!coin.active) return;
+      const ahead = forwardDistance(player.distance, coin.distance);
+      if (ahead > drawDistance) return;
+      const item = project(ahead, coin.lateral);
+      const size = 5 + item.scale * 25;
+      ctx.save(); ctx.translate(item.x, item.y - size);
+      ctx.fillStyle = "#ffcf3d"; ctx.shadowBlur = size; ctx.shadowColor = "#ffd44f";
+      ctx.beginPath(); ctx.ellipse(0, 0, size * .5, size, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#fff3ae"; ctx.fillRect(-size * .12, -size * .63, size * .24, size * 1.26);
+      ctx.restore();
+    }
+
+    function drawPowerSpark(spark) {
+      if (!spark.active) return;
+      const ahead = forwardDistance(player.distance, spark.distance);
+      if (ahead > drawDistance) return;
+      const item = project(ahead, spark.lateral);
+      const size = 6 + item.scale * 29;
+      ctx.save(); ctx.translate(item.x, item.y - size);
+      ctx.fillStyle = "#67e8ff"; ctx.shadowBlur = size; ctx.shadowColor = "#8b74ff";
+      ctx.beginPath();
+      for (let point = 0; point < 8; point++) {
+        const angle = -Math.PI / 2 + point * Math.PI / 4;
+        const radius = point % 2 ? size * .42 : size;
+        const x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+        if (point) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+      }
+      ctx.closePath(); ctx.fill();
+      ctx.fillStyle = "#f3ffff"; ctx.beginPath(); ctx.arc(0, 0, size * .26, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+    }
+
+    function drawBoostPad() {
+      const padDistance = Math.floor(player.distance / 920 + 1) * 920;
+      const ahead = padDistance - player.distance;
+      if (ahead > drawDistance || ahead < 0) return;
+      const pad = project(ahead, 0);
+      const width = 16 + pad.scale * 145;
+      ctx.fillStyle = "#4ee7ff"; ctx.shadowBlur = 17 * pad.scale; ctx.shadowColor = "#4ee7ff";
+      ctx.fillRect(pad.x - width / 2, pad.y - 7 * pad.scale, width, 14 * pad.scale);
+      ctx.shadowBlur = 0;
+    }
+
+    function drawRival(rival, index) {
+      const ahead = forwardDistance(player.distance, rival.distance);
+      if (ahead > drawDistance || ahead < 5) return;
+      const car = project(ahead, rival.lateral);
+      const size = 9 + car.scale * 52;
+      ctx.save(); ctx.translate(car.x, car.y - size * .3);
+      ctx.fillStyle = "#10151d"; ctx.fillRect(-size * .55, -size * .16, size * .18, size * .38); ctx.fillRect(size * .37, -size * .16, size * .18, size * .38);
+      ctx.fillStyle = rival.color; ctx.beginPath(); ctx.roundRect(-size * .5, -size * .45, size, size * .8, size * .18); ctx.fill();
+      ctx.fillStyle = "#d6f8ff"; ctx.fillRect(-size * .17, -size * .34, size * .34, size * .28);
+      if (rival.distance < rival.boostUntil) {
+        ctx.fillStyle = "#ffca4f"; ctx.shadowBlur = size; ctx.shadowColor = "#ff704f";
+        ctx.fillRect(-size * .18, size * .34, size * .36, size * .32); ctx.shadowBlur = 0;
+      }
+      ctx.fillStyle = "#fff"; ctx.font = `bold ${Math.max(7,size*.2)}px Arial`; ctx.textAlign = "center"; ctx.fillText(`R${index+1}`, 0, -size * .65);
+      ctx.restore();
+    }
+
+    function drawCockpit(now) {
+      ctx.fillStyle = "#101b2c"; ctx.fillRect(0, canvas.height - 92, canvas.width, 92);
+      ctx.fillStyle = player.boostTime > now ? "#55eaff" : "#24405f"; ctx.fillRect(canvas.width / 2 - 115, canvas.height - 22, 230, 9);
+      ctx.strokeStyle = "#a9c5e1"; ctx.lineWidth = 13; ctx.beginPath(); ctx.arc(canvas.width / 2, canvas.height + 35, 122, Math.PI * 1.14, Math.PI * 1.86); ctx.stroke();
+      ctx.fillStyle = "#d7e9fa"; ctx.font = "bold 15px Arial"; ctx.textAlign = "center"; ctx.fillText("COOLCART", canvas.width / 2, canvas.height - 57);
+    }
+
+    function draw(now) {
+      drawBackground(); drawRoad(); coins.forEach(drawCoin); powerSparks.forEach(drawPowerSpark); drawBoostPad(); rivals.forEach(drawRival); drawCockpit(now);
+    }
+
+    function ordinal(value) { return value === 1 ? "1st" : value === 2 ? "2nd" : value === 3 ? "3rd" : "4th"; }
+    function finishRace(place) {
+      running = false; window.cancelAnimationFrame(animation);
+      finishTitle.textContent = place === 1 ? `You won ${activeTrack.name}!` : `${ordinal(place)} place on ${activeTrack.name}`;
+      finishCopy.textContent = place === 1 ? "A cool drive. Pick another track and race again!" : "Try a different road, stay centered, and save boost for the long straights.";
+      finishScreen.classList.remove("hidden");
+    }
+
+    function frame(now) {
+      if (!running) return;
+      const dt = Math.min(.05, (now - lastFrame) / 1000 || .016);
+      lastFrame = now; updatePlayer(dt, now); updateRivals(dt); draw(now);
+      const place = standings().findIndex(entry => entry.id === "player") + 1;
+      lapElement.textContent = `${player.lap} / ${lapsToWin}`; placeElement.textContent = ordinal(place); speedElement.textContent = Math.round(player.speed * 1.1); boostElement.style.width = `${player.boost}%`;
+      if (player.distance >= lapsToWin * activeTrack.length) { finishRace(place); return; }
+      animation = window.requestAnimationFrame(frame);
+    }
+
+    function startRace() {
+      activeTrack = tracks[selectedTrack]; resetRace(); startScreen.classList.add("hidden"); finishScreen.classList.add("hidden"); running = true; lastFrame = performance.now(); animation = window.requestAnimationFrame(frame);
+    }
+
+    document.querySelectorAll("[data-track]").forEach(button => button.addEventListener("click", () => {
+      selectedTrack = button.dataset.track;
+      document.querySelectorAll("[data-track]").forEach(choice => choice.classList.toggle("selected", choice === button));
+      startRace();
+    }));
+    document.getElementById("start-race").addEventListener("click", startRace);
+    document.getElementById("race-again").addEventListener("click", () => { finishScreen.classList.add("hidden"); startScreen.classList.remove("hidden"); });
+    window.addEventListener("keydown", event => { if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(event.key)) event.preventDefault(); keys.add(event.key); });
+    window.addEventListener("keyup", event => keys.delete(event.key));
+    resetRace(); draw(0);
+  </script>
+</body>
+</html>
