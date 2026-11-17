@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Frontline Frenzy</title>
+  <style>
+    :root { color-scheme:dark; font-family:Arial,sans-serif; --ink:#f4f8ff; --muted:#b9cae6; --blue:#5dc9ff; --red:#ff7f72; --gold:#ffd364; }
+    * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#344f73,#09101b 70%); color:var(--ink); margin:0; min-height:100vh; }
+    main { margin:auto; max-width:1100px; padding:24px 16px 42px; } .topline { display:flex; justify-content:space-between; margin-bottom:16px; } .back { color:#d5e8ff; text-decoration:none; } .back:hover { color:var(--gold); }
+    h1 { font-size:clamp(2.4rem,7vw,4.5rem); letter-spacing:-.07em; margin:0; text-align:center; } .tagline { color:var(--muted); text-align:center; }
+    .game { background:#102037e8; border:1px solid #4d719a; border-radius:20px; box-shadow:0 20px 55px #0008; overflow:hidden; position:relative; }
+    .statusbar { align-items:center; background:#0b1727; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; padding:12px 16px; } .turn { font-weight:bold; } .turn.blue { color:var(--blue); } .turn.red { color:var(--red); }
+    button { background:#29425f; border:1px solid #6f8cab; border-radius:9px; color:var(--ink); cursor:pointer; font:inherit; padding:10px 13px; } button:hover:not(:disabled),button:focus-visible { background:#3a5778; border-color:var(--gold); outline:none; } button:disabled { cursor:not-allowed; opacity:.42; }
+    .layout { display:grid; gap:18px; grid-template-columns:250px minmax(0,1fr) 250px; padding:18px; } .panel { background:#182d46; border:1px solid #49688c; border-radius:12px; padding:14px; } .panel h2 { font-size:1.04rem; margin:0 0 10px; } .panel p { color:var(--muted); font-size:.9rem; line-height:1.5; margin:0; }
+    .base { border:2px solid; border-radius:12px; margin-bottom:12px; padding:11px; text-align:center; } .base.blue { border-color:var(--blue); } .base.red { border-color:var(--red); } .base b { display:block; font-size:1.8rem; margin-top:3px; } .points { color:var(--gold); font-weight:bold; }
+    .battlefield { background:linear-gradient(180deg,#386d53,#204332); border:5px solid #7fa26c; display:grid; gap:9px; padding:12px; } .lane { background:linear-gradient(90deg,#2c5d49,#17392f); border:1px solid #9dbd82; display:grid; grid-template-columns:repeat(9,1fr); min-height:112px; overflow:hidden; position:relative; } .lane::before { border-bottom:2px dashed #d5efbc55; content:""; left:0; position:absolute; right:0; top:50%; }
+    .lane-cell { align-items:center; background:#ffffff03; border:0; border-right:1px solid #d5efbc22; display:flex; justify-content:center; min-width:0; padding:0; position:relative; z-index:1; } .lane-cell.deploy { background:#fff0a529; box-shadow:inset 0 0 0 3px #ffd364; } .lane-cell:hover:not(:disabled) { background:#ffffff20; }
+    .soldier { align-items:center; border:3px solid #effbff; border-radius:50%; box-shadow:0 3px 7px #0009; display:flex; font-size:clamp(.65rem,1.9vw,1.1rem); font-weight:bold; height:58px; justify-content:center; position:relative; transition:transform .2s,filter .2s; width:58px; } .soldier.blue { background:radial-gradient(circle at 35% 30%,#c1f3ff,#2586ba); } .soldier.red { background:radial-gradient(circle at 35% 30%,#ffd1bd,#bf4b4d); } .soldier.rally { animation:rally .65s ease-in-out infinite alternate; box-shadow:0 0 15px var(--gold),0 3px 7px #0009; } .soldier .hp { background:#0b1828; border-radius:99px; bottom:-10px; font-size:.68rem; padding:2px 5px; position:absolute; } @keyframes rally { to { filter:brightness(1.5); transform:translateY(-4px) scale(1.08); } }
+    .unit-cards { display:grid; gap:8px; } .unit-card { border-left:8px solid var(--unit); min-height:72px; padding:9px; text-align:left; } .unit-card.selected { box-shadow:0 0 0 2px var(--gold); border-color:var(--gold); } .unit-card b { display:block; } .unit-card small { color:#c6d6ea; display:block; line-height:1.35; margin-top:3px; }
+    .command { margin-top:12px; width:100%; } .message { border-left:4px solid var(--gold); } .help { color:var(--muted); font-size:.86rem; margin-top:14px; text-align:center; }
+    .overlay { align-items:center; background:#071321dc; display:flex; inset:0; justify-content:center; padding:20px; position:absolute; text-align:center; z-index:5; } .overlay.hidden { display:none; } .overlay-card { max-width:630px; } .overlay h2 { font-size:clamp(2.2rem,6vw,4rem); margin:0 0 10px; } .overlay p { color:#d1e0f2; line-height:1.6; }
+    .mode-buttons { display:grid; gap:12px; grid-template-columns:1fr 1fr; margin:22px 0; } .mode-buttons button { min-height:115px; text-align:left; } .mode-buttons strong { display:block; font-size:1.2rem; margin-bottom:8px; } .mode-buttons small { color:#c1d4eb; line-height:1.4; }
+    @media (max-width:820px) { .layout { grid-template-columns:1fr; } .layout > .panel:first-child { display:grid; gap:10px; grid-template-columns:1fr 1fr; } .base { margin:0; } } @media (max-width:480px) { .mode-buttons { grid-template-columns:1fr; } .lane { min-height:80px; } .soldier { height:38px; width:38px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="topline"><a class="back" href="index.html">← All games</a><span>Original lane strategy</span></div>
+    <h1>Frontline Frenzy</h1>
+    <p class="tagline">Deploy your army into three lanes, then watch the frontline move and fight.</p>
+    <section class="game" aria-label="Frontline Frenzy army game">
+      <div class="statusbar"><span class="turn" id="turn-label">Choose a game mode</span><span>Battle pulse <b id="round">1</b></span></div>
+      <div class="layout">
+        <aside class="panel"><div class="base blue"><span>Blue base</span><b id="blue-base">24</b></div><div class="base red"><span>Red base</span><b id="red-base">24</b></div><p class="message" id="message">Choose a mode to begin.</p><button class="command" id="rally" type="button" disabled>Rally army · 0%</button><p class="help">Fill the Rally meter by defeating units or hitting the enemy base. Blue uses Space; Red uses Y in two-player mode. Press P at any time to pause or continue.</p></aside>
+        <div class="battlefield" id="battlefield" aria-label="Three lane battlefield"></div>
+        <aside class="panel"><h2>Deploy a unit</h2><p><span class="points" id="points">Blue: 5 CP · Red: 5 CP</span></p><div class="unit-cards" id="unit-cards"></div><p class="help">The battle never stops. Click a unit and a glowing starting tile, or use the keyboard: Q/W/E deploy Runners, A/S/D deploy Guards, and Z/X/C deploy Cannons into the top, middle, and bottom lanes.</p></aside>
+      </div>
+      <div class="overlay" id="start-screen"><div class="overlay-card"><h2>Choose your commander</h2><p>Build an army while the battle keeps moving. Units automatically march, fight, and attack the enemy base.</p><div class="mode-buttons"><button data-mode="two-player" type="button"><strong>Two players</strong><small>Blue uses Q–C. Red uses U–/.</small></button><button data-mode="robot" type="button"><strong>Fight the robot</strong><small>Use Q–C to command blue while the robot deploys red units.</small></button></div></div></div>
+      <div class="overlay hidden" id="finish-screen"><div class="overlay-card"><h2 id="winner-title">Victory!</h2><p id="winner-copy"></p><button id="play-again" type="button">Play again</button></div></div>
+      <div class="overlay hidden" id="pause-screen"><div class="overlay-card"><h2>Battle paused</h2><p>Your exact battle is saved. Press P or use the button below to continue.</p><button id="resume-game" type="button">Continue battle</button></div></div>
+    </section>
+  </main>
+  <script>
+    const battlefield = document.getElementById("battlefield");
+    const unitCards = document.getElementById("unit-cards");
+    const turnLabel = document.getElementById("turn-label");
+    const roundElement = document.getElementById("round");
+    const pointsElement = document.getElementById("points");
+    const blueBaseElement = document.getElementById("blue-base");
+    const redBaseElement = document.getElementById("red-base");
+    const message = document.getElementById("message");
+    const startScreen = document.getElementById("start-screen");
+    const finishScreen = document.getElementById("finish-screen");
+    const winnerTitle = document.getElementById("winner-title");
+    const winnerCopy = document.getElementById("winner-copy");
+    const rallyButton = document.getElementById("rally");
+    const pauseScreen = document.getElementById("pause-screen");
+    const resumeGame = document.getElementById("resume-game");
+    const laneCount = 3, laneLength = 9;
+    const savedGameKey = "frontline-frenzy-saved-game";
+    const types = {
+      runner:{name:"Runner", icon:"R", cost:2, health:4, attack:2, range:1, move:2, color:"#7ce6ff"},
+      guard:{name:"Guard", icon:"G", cost:3, health:9, attack:3, range:1, move:1, armor:1, color:"#9de777"},
+      cannon:{name:"Cannon", icon:"C", cost:4, health:5, attack:4, range:3, move:1, color:"#ffd364"}
+    };
+    let mode = null, round = 1, points = [5,5], bases = [24,24], units = [], selectedType = "runner", gameOver = false, battleTimer = null, rallies = [0,0], rallyPulses = [0,0], paused = false;
+
+    function unitAt(lane, position) { return units.find(unit => unit.health > 0 && unit.lane === lane && unit.position === position); }
+    function livingUnits(side) { return units.filter(unit => unit.side === side && unit.health > 0); }
+    function canControl(side = 0) { return !paused && !gameOver && mode && (mode === "two-player" || side === 0); }
+
+    function saveGame() {
+      if (!mode || gameOver) return;
+      sessionStorage.setItem(savedGameKey, JSON.stringify({mode,round,points,bases,units,selectedType,rallies,rallyPulses,paused}));
+    }
+
+    function startBattleTimer() {
+      window.clearInterval(battleTimer);
+      battleTimer = window.setInterval(battleTick, 700);
+    }
+
+    function resetGame(nextMode) {
+      window.clearInterval(battleTimer);
+      mode = nextMode; round = 1; points = [5,5]; bases = [24,24]; units = []; selectedType = "runner"; gameOver = false; rallies = [0,0]; rallyPulses = [0,0]; paused = false;
+      sessionStorage.removeItem(savedGameKey);
+      startScreen.classList.add("hidden"); finishScreen.classList.add("hidden"); pauseScreen.classList.add("hidden"); message.textContent = "Battle started! Deploy blue units with Q through C.";
+      startBattleTimer();
+      render();
+    }
+
+    function render() {
+      battlefield.innerHTML = "";
+      for (let lane=0; lane<laneCount; lane++) {
+        const laneElement = document.createElement("div"); laneElement.className = "lane";
+        for (let position=0; position<laneLength; position++) {
+          const cell = document.createElement("button"); cell.type = "button"; cell.className = "lane-cell";
+          const unit = unitAt(lane,position);
+          if (canControl() && position === 1 && !unit && points[0] >= types[selectedType].cost) cell.classList.add("deploy");
+          if (unit) {
+            const info = types[unit.type], marker = document.createElement("span");
+            marker.className = `soldier ${unit.side === 0 ? "blue" : "red"}${rallyPulses[unit.side] ? " rally" : ""}`;
+            marker.innerHTML = `${info.icon}<span class="hp">${unit.health}</span>`; marker.title = `${info.name}: ${unit.health} health`;
+            cell.append(marker);
+          }
+          cell.addEventListener("click", () => deploy(lane,position)); laneElement.append(cell);
+        }
+        battlefield.append(laneElement);
+      }
+      unitCards.innerHTML = "";
+      Object.entries(types).forEach(([id,info]) => {
+        const card = document.createElement("button"); card.className = `unit-card${selectedType === id ? " selected" : ""}`; card.style.setProperty("--unit",info.color);
+        const armor = info.armor ? ` · ${info.armor} armor` : "";
+        card.disabled = !canControl() || points[0] < info.cost; card.innerHTML = `<b>${info.name} · ${info.cost} CP</b><small>${info.move} move · ${info.range} range · ${info.attack} damage · ${info.health} health${armor}</small>`;
+        card.addEventListener("click", () => { selectedType=id; render(); }); unitCards.append(card);
+      });
+      turnLabel.textContent = mode ? (mode === "robot" ? "Blue vs robot · live battle" : "Blue vs red · live battle") : "Choose a game mode";
+      turnLabel.className = "turn blue";
+      roundElement.textContent = round; pointsElement.textContent = `Blue: ${points[0]} CP · Red: ${points[1]} CP`; blueBaseElement.textContent = bases[0]; redBaseElement.textContent = bases[1];
+      rallyButton.disabled = !canControl() || rallies[0] < 100 || rallyPulses[0] > 0;
+      rallyButton.textContent = rallyPulses[0] ? `Rally active · ${rallyPulses[0]} pulses` : `Blue rally · ${rallies[0]}%`;
+    }
+
+    function deploy(lane, position, type = selectedType, side = 0) {
+      if (gameOver || !mode || position !== (side === 0 ? 1 : laneLength - 2) || unitAt(lane,position)) return false;
+      const info = types[type]; if (points[side] < info.cost) return false;
+      points[side] -= info.cost; units.push({id:`${side}-${Date.now()}-${units.length}`,side,type,lane,position,health:info.health});
+      message.textContent = `${side === 0 ? "Blue" : "Red"} deployed a ${info.name}.`; render();
+      return true;
+    }
+
+    function robotDeploy() {
+      if (gameOver || mode !== "robot") return;
+      const choices = Object.entries(types).filter(([,info]) => info.cost <= points[1]).sort((a,b) => b[1].cost - a[1].cost);
+      for (const [type,info] of choices) {
+        while (points[1] >= info.cost && Math.random() > .35) {
+          const lane = [0,1,2].filter(candidate => !unitAt(candidate,laneLength-2)).sort((a,b) => livingUnits(0).filter(unit=>unit.lane===b).length - livingUnits(0).filter(unit=>unit.lane===a).length)[0];
+          if (lane === undefined) break;
+          deploy(lane, laneLength - 2, type, 1);
+        }
+      }
+    }
+
+    function battleTick() {
+      if (gameOver || paused) return;
+      const damage = new Map(), baseDamage = [0,0];
+      units.filter(unit=>unit.health>0).forEach(unit => {
+        const info = types[unit.type], direction = unit.side === 0 ? 1 : -1;
+        const enemies = livingUnits(1-unit.side).filter(enemy=>enemy.lane===unit.lane && (enemy.position-unit.position)*direction > 0).sort((a,b)=>Math.abs(a.position-unit.position)-Math.abs(b.position-unit.position));
+        const target = enemies[0];
+        const attack = info.attack + (rallyPulses[unit.side] ? 1 : 0);
+        if (target && Math.abs(target.position-unit.position) <= info.range) {
+          damage.set(target.id,(damage.get(target.id)||0)+attack);
+        } else if ((unit.side === 0 && unit.position >= laneLength-2) || (unit.side === 1 && unit.position <= 1)) {
+          baseDamage[1-unit.side] += attack;
+        } else {
+          for (let step=0; step<info.move; step++) {
+            const next = unit.position + direction;
+            if (unitAt(unit.lane,next)) break;
+            unit.position = next;
+          }
+        }
+      });
+      units.forEach(unit => {
+        const incoming = damage.get(unit.id)||0;
+        const armor = types[unit.type].armor || 0;
+        unit.health -= Math.max(0,incoming - armor);
+      });
+      const defeatedBlue = units.filter(unit => unit.side === 0 && unit.health <= 0).length;
+      const defeatedRed = units.filter(unit => unit.side === 1 && unit.health <= 0).length;
+      rallies[0] = Math.min(100,rallies[0] + defeatedRed * 20 + baseDamage[1] * 5);
+      rallies[1] = Math.min(100,rallies[1] + defeatedBlue * 20 + baseDamage[0] * 5);
+      units = units.filter(unit => unit.health > 0);
+      bases[0] -= baseDamage[0]; bases[1] -= baseDamage[1];
+      if (bases[0] <= 0 || bases[1] <= 0) { finish(bases[0] > bases[1] ? 0 : 1); return; }
+      round++;
+      if (round % 2 === 0) {
+        points[0] = Math.min(12,points[0]+1);
+        points[1] = Math.min(12,points[1]+1);
+      }
+      rallyPulses = rallyPulses.map(pulses => Math.max(0,pulses - 1));
+      if (mode === "robot" && rallies[1] >= 100 && !rallyPulses[1]) activateRally(1);
+      robotDeploy();
+      saveGame();
+      render();
+    }
+
+    function finish(winner) {
+      gameOver = true; window.clearInterval(battleTimer); sessionStorage.removeItem(savedGameKey); winnerTitle.textContent = `${winner === 0 ? "Blue" : "Red"} army wins!`;
+      winnerCopy.textContent = mode === "robot" ? (winner === 0 ? "You broke through the robot commander's base." : "The robot commander destroyed your base.") : "The enemy base has fallen.";
+      finishScreen.classList.remove("hidden"); render();
+    }
+
+    function activateRally(side = 0) {
+      if (gameOver || !mode || (side === 1 && mode !== "two-player" && mode !== "robot") || rallies[side] < 100 || rallyPulses[side]) return;
+      rallies[side] = 0; rallyPulses[side] = 5;
+      message.textContent = `Rally! ${side === 0 ? "Blue" : "Red"} units gain 1 damage for five battle pulses.`;
+      render();
+    }
+
+    function togglePause() {
+      if (!mode || gameOver) return;
+      paused = !paused;
+      if (paused) {
+        window.clearInterval(battleTimer);
+        pauseScreen.classList.remove("hidden");
+        message.textContent = "Battle paused.";
+      } else {
+        pauseScreen.classList.add("hidden");
+        message.textContent = "Battle continued.";
+        startBattleTimer();
+      }
+      saveGame();
+      render();
+    }
+
+    function restoreSavedGame() {
+      const savedGame = sessionStorage.getItem(savedGameKey);
+      if (!savedGame) return;
+      try {
+        const saved = JSON.parse(savedGame);
+        if (!["two-player","robot"].includes(saved.mode) || !Array.isArray(saved.units) || !Array.isArray(saved.points) || !Array.isArray(saved.bases) || !Array.isArray(saved.rallies) || !Array.isArray(saved.rallyPulses)) throw new Error("Invalid saved game");
+        ({mode,round,points,bases,units,selectedType,rallies,rallyPulses,paused} = saved);
+        startScreen.classList.add("hidden");
+        finishScreen.classList.add("hidden");
+        if (paused) pauseScreen.classList.remove("hidden");
+        else startBattleTimer();
+        message.textContent = paused ? "Battle restored and paused." : "Battle restored.";
+      } catch (error) {
+        console.warn("Could not restore the saved Frontline Frenzy battle.", error);
+        sessionStorage.removeItem(savedGameKey);
+      }
+    }
+
+    document.querySelectorAll("[data-mode]").forEach(button => button.addEventListener("click",()=>resetGame(button.dataset.mode)));
+    rallyButton.addEventListener("click",activateRally);
+    document.getElementById("play-again").addEventListener("click",()=>resetGame(mode));
+    resumeGame.addEventListener("click",togglePause);
+    const keyDeployments = {
+      q:["runner",0], w:["runner",1], e:["runner",2],
+      a:["guard",0], s:["guard",1], d:["guard",2],
+      z:["cannon",0], x:["cannon",1], c:["cannon",2],
+      u:["runner",0], i:["runner",1], o:["runner",2],
+      j:["guard",0], k:["guard",1], l:["guard",2],
+      m:["cannon",0], ",":["cannon",1], ".":["cannon",2]
+    };
+    document.addEventListener("keydown", event => {
+      if (event.target.matches("button")) return;
+      if (event.key.toLowerCase() === "p") {
+        event.preventDefault();
+        togglePause();
+        return;
+      }
+      if (event.code === "Space") {
+        event.preventDefault();
+        activateRally();
+        return;
+      }
+      if (event.key.toLowerCase() === "y") {
+        activateRally(1);
+        return;
+      }
+      if (event.repeat) return;
+      const command = keyDeployments[event.key.toLowerCase()];
+      if (!command) return;
+      const side = "uiojklm,.".includes(event.key.toLowerCase()) ? 1 : 0;
+      if (!canControl(side)) return;
+      event.preventDefault();
+      deploy(command[1], side === 0 ? 1 : laneLength - 2, command[0], side);
+    });
+    window.addEventListener("pagehide", saveGame);
+    restoreSavedGame();
+    render();
+  </script>
+</body>
+</html>

@@ -15,7 +15,12 @@
     button:hover, button:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
     canvas { background: #0b1428; border: 3px solid #4672b8; border-radius: 8px; display: block; margin: 16px auto; max-width: 100%; touch-action: none; }
     #status { min-height: 1.5em; color: #c8d5f0; } .keys { color: #c8d5f0; font-size: .95rem; } .scores { display: flex; justify-content: center; gap: 14px; margin: 12px 0; } .score-card { border: 2px solid #ffcf3f; border-radius: 10px; padding: 8px 18px; } .score-card.player-two { border-color: #b783ff; } .score-card strong { color: #ffcf3f; display: block; font-size: 1.35rem; } .score-card.player-two strong { color: #d5b7ff; } .hidden { display: none; }
-  </style>
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
+    </style>
 </head>
 <body>
   <main>
@@ -42,6 +47,26 @@
     </section>
   </main>
   <script>
+      const PAUSE_STORAGE_KEY = "pause-snake";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return playing && !gameOver; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
     const canvas = document.querySelector("#board"), ctx = canvas.getContext("2d"), size = 20;
     const scoreOneEl = document.querySelector("#score-one"), scoreTwoEl = document.querySelector("#score-two"), playerTwoScoreEl = document.querySelector("#player-two-score"), status = document.querySelector("#status");
     let players, food, timer, playing, twoPlayer, explosion, gameOver;
@@ -56,7 +81,7 @@
       if (explosion) { ctx.fillStyle = "#fff2a5"; for (let i = 0; i < 10; i++) { const angle = (Math.PI * 2 * i) / 10; ctx.fillRect(explosion.x * 20 + 8 + Math.cos(angle) * 21, explosion.y * 20 + 8 + Math.sin(angle) * 21, 7, 7); } ctx.fillStyle = "#ff5f6d"; ctx.fillRect(explosion.x * 20 + 3, explosion.y * 20 + 3, 14, 14); }
     }
     function finish(playerIndex, message, exploded=false, impact=players[playerIndex].snake[0]) { playing = false; gameOver = true; clearInterval(timer); explosion = exploded ? { x:Math.max(0,Math.min(size-1,impact.x)), y:Math.max(0,Math.min(size-1,impact.y)) } : null; draw(); const winner = twoPlayer ? `Player ${playerIndex === 0 ? 2 : 1} wins!` : "Game over!"; status.textContent = `${winner} ${message} Press Restart to play again.`; }
-    function step() {
+    function step() { if (paused) return;
       const heads = players.map(player => ({ x: player.snake[0].x + player.nextDirection.x, y: player.snake[0].y + player.nextDirection.y }));
       for (let index = 0; index < players.length; index++) {
         const head = heads[index], player = players[index];
@@ -75,8 +100,12 @@
     }
     function start() { if (!playing && !gameOver) { playing = true; status.textContent = "Go!"; timer = setInterval(step, speeds[document.querySelector('input[name="difficulty"]:checked').value]); } }
     function reset() { clearInterval(timer); twoPlayer = document.querySelector('input[name="mode"]:checked').value === "two-player"; players = [{ snake:[{x:4,y:10},{x:3,y:10},{x:2,y:10}], direction:{x:1,y:0}, nextDirection:{x:1,y:0}, score:0, color:"#64dca5", headColor:"#ffcf3f" }]; if (twoPlayer) players.push({ snake:[{x:15,y:10},{x:16,y:10},{x:17,y:10}], direction:{x:-1,y:0}, nextDirection:{x:-1,y:0}, score:0, color:"#b783ff", headColor:"#ead8ff" }); playing = false; gameOver = false; explosion = null; scoreOneEl.textContent = "0"; scoreTwoEl.textContent = "0"; playerTwoScoreEl.classList.toggle("hidden", !twoPlayer); randomFood(); draw(); status.textContent = twoPlayer ? "Player 1 uses W A S D. Player 2 uses arrow keys. First to 10 wins!" : "Press W, A, S, or D to start."; canvas.focus(); }
-    document.addEventListener("keydown", e => { const moves = { w:[0,0,-1], W:[0,0,-1], s:[0,0,1], S:[0,0,1], a:[0,-1,0], A:[0,-1,0], d:[0,1,0], D:[0,1,0], ArrowUp:[1,0,-1], ArrowDown:[1,0,1], ArrowLeft:[1,-1,0], ArrowRight:[1,1,0] }, move = moves[e.key]; if (!move || (!twoPlayer && move[0] === 1)) return; e.preventDefault(); const [playerIndex, x, y] = move, player = players[playerIndex]; if (x !== -player.direction.x || y !== -player.direction.y) player.nextDirection = {x,y}; start(); });
+    document.addEventListener("keydown", e => { if (paused) return; const moves = { w:[0,0,-1], W:[0,0,-1], s:[0,0,1], S:[0,0,1], a:[0,-1,0], A:[0,-1,0], d:[0,1,0], D:[0,1,0], ArrowUp:[1,0,-1], ArrowDown:[1,0,1], ArrowLeft:[1,-1,0], ArrowRight:[1,1,0] }, move = moves[e.key]; if (!move || (!twoPlayer && move[0] === 1)) return; e.preventDefault(); const [playerIndex, x, y] = move, player = players[playerIndex]; if (x !== -player.direction.x || y !== -player.direction.y) player.nextDirection = {x,y}; start(); });
     document.querySelector("#restart").addEventListener("click", reset); reset();
-  </script>
-</body>
+        initPauseSystem();
+    </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
+  </body>
 </html>

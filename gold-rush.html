@@ -280,6 +280,90 @@
         margin-top: 24px;
       }
 
+      .touch-controls {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 24px;
+      }
+
+      .touch-pad {
+        background: rgba(7, 14, 16, 0.65);
+        border: 2px solid;
+        border-radius: 16px;
+        padding: 12px;
+      }
+
+      .touch-pad.player-one {
+        border-color: #f15b6b;
+      }
+
+      .touch-pad.player-two {
+        border-color: #58c9e7;
+      }
+
+      .touch-pad h2 {
+        font-size: 1rem;
+        margin: 0 0 9px;
+      }
+
+      .touch-buttons {
+        display: grid;
+        gap: 7px;
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .touch-button {
+        background: #29312b;
+        border: 1px solid #9fa48a;
+        border-radius: 10px;
+        color: #fff;
+        cursor: pointer;
+        font-size: 1.25rem;
+        font-weight: bold;
+        min-height: 48px;
+        touch-action: manipulation;
+      }
+
+      .touch-button:hover,
+      .touch-button:focus-visible {
+        background: #46513a;
+        outline: 3px solid #fff;
+        outline-offset: 2px;
+      }
+
+      .touch-button.bomb-button {
+        background: #9e3f49;
+        font-size: .88rem;
+      }
+
+      .touch-button:disabled {
+        cursor: not-allowed;
+        opacity: .4;
+      }
+
+      .touch-up {
+        grid-column: 2;
+      }
+
+      @media (max-width: 430px) {
+        body {
+          padding: 14px;
+        }
+
+        .touch-controls {
+          gap: 10px;
+        }
+
+        .touch-pad {
+          padding: 8px;
+        }
+
+        .touch-button {
+          min-height: 43px;
+        }
+      }
+
       #restart,
       #bot-toggle {
         background: #ffdc4b;
@@ -308,6 +392,11 @@
         font-family: inherit;
         padding: 2px 5px;
       }
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
     </style>
   </head>
   <body>
@@ -332,6 +421,28 @@
         </section>
         <div id="board" aria-label="Gold Rush board" role="grid"></div>
       </div>
+      <div class="touch-controls" id="touch-controls" aria-label="Touch controls">
+        <section class="touch-pad player-one" aria-label="Player 1 touch controls">
+          <h2>Player 1</h2>
+          <div class="touch-buttons">
+            <button class="touch-button touch-up" data-touch-control data-player="0" data-row="-1" data-column="0" type="button" aria-label="Player 1 move up">▲</button>
+            <button class="touch-button" data-touch-control data-player="0" data-row="0" data-column="-1" type="button" aria-label="Player 1 move left">◀</button>
+            <button class="touch-button bomb-button" data-touch-control data-player="0" data-action="bomb" type="button">BOMB</button>
+            <button class="touch-button" data-touch-control data-player="0" data-row="0" data-column="1" type="button" aria-label="Player 1 move right">▶</button>
+            <button class="touch-button touch-up" data-touch-control data-player="0" data-row="1" data-column="0" type="button" aria-label="Player 1 move down">▼</button>
+          </div>
+        </section>
+        <section class="touch-pad player-two" aria-label="Player 2 touch controls">
+          <h2 id="touch-player-two-label">Player 2</h2>
+          <div class="touch-buttons">
+            <button class="touch-button touch-up" data-touch-control data-player="1" data-row="-1" data-column="0" type="button" aria-label="Player 2 move up">▲</button>
+            <button class="touch-button" data-touch-control data-player="1" data-row="0" data-column="-1" type="button" aria-label="Player 2 move left">◀</button>
+            <button class="touch-button bomb-button" data-touch-control data-player="1" data-action="bomb" type="button">BOMB</button>
+            <button class="touch-button" data-touch-control data-player="1" data-row="0" data-column="1" type="button" aria-label="Player 2 move right">▶</button>
+            <button class="touch-button touch-up" data-touch-control data-player="1" data-row="1" data-column="0" type="button" aria-label="Player 2 move down">▼</button>
+          </div>
+        </section>
+      </div>
       <div class="actions">
         <button id="restart" type="button">Play again</button>
         <button id="bot-toggle" type="button">Play vs bot</button>
@@ -339,6 +450,26 @@
     </main>
 
     <script>
+      const PAUSE_STORAGE_KEY = "pause-gold-rush";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return !gameOver; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
       const BOARD_SIZE = 9;
       const BOT_BOMB_INTERVAL = 5000;
       const EFFECT_INTERVAL = 100;
@@ -361,6 +492,8 @@
       const powerStatusElement = document.querySelector("#power-status");
       const restartButton = document.querySelector("#restart");
       const botToggleButton = document.querySelector("#bot-toggle");
+      const touchControls = document.querySelector("#touch-controls");
+      const touchPlayerTwoLabel = document.querySelector("#touch-player-two-label");
       const players = [
         { name: "Player 1", className: "player-one", row: 0, column: 0, score: 0, bombs: 10, frozenUntil: 0, shieldUntil: 0 },
         { name: "Player 2", className: "player-two", row: 8, column: 8, score: 0, bombs: 10, frozenUntil: 0, shieldUntil: 0 }
@@ -536,7 +669,7 @@
       }
 
       function placeBomb(playerIndex, position = players[playerIndex], isBotPlacement = false) {
-        if (gameOver || (botEnabled && playerIndex === 1 && !isBotPlacement)) {
+        if (paused || gameOver || (botEnabled && playerIndex === 1 && !isBotPlacement)) {
           return;
         }
 
@@ -558,7 +691,7 @@
       }
 
       function movePlayer(playerIndex, rowChange, columnChange, isBotMove = false) {
-        if (gameOver || (botEnabled && playerIndex === 1 && !isBotMove)) {
+        if (paused || gameOver || (botEnabled && playerIndex === 1 && !isBotMove)) {
           return;
         }
 
@@ -648,6 +781,7 @@
       }
 
       function updateTimedEffects() {
+        if (paused) return;
         const now = Date.now();
         let needsRender = false;
 
@@ -716,7 +850,7 @@
       }
 
       function moveBot() {
-        if (!botEnabled || gameOver || players[1].frozenUntil > Date.now()) {
+        if (paused || !botEnabled || gameOver || players[1].frozenUntil > Date.now()) {
           return;
         }
 
@@ -747,7 +881,7 @@
       function placeBotBomb() {
         const bot = players[1];
 
-        if (!botEnabled || gameOver || bot.frozenUntil > Date.now() || bot.bombs === 0) {
+        if (paused || !botEnabled || gameOver || bot.frozenUntil > Date.now() || bot.bombs === 0) {
           return;
         }
 
@@ -758,9 +892,14 @@
         playerTwoLabelElement.textContent = botEnabled ? "Bot" : "Player 2";
         playerTwoControlsElement.textContent = botEnabled ? "Moves automatically" : "↑ ← ↓ → move · Right Shift bomb";
         botToggleButton.textContent = botEnabled ? "Play 2 players" : "Play vs bot";
+        touchPlayerTwoLabel.textContent = botEnabled ? "Bot controls" : "Player 2";
+        touchControls.querySelectorAll('[data-player="1"]').forEach((button) => {
+          button.disabled = botEnabled;
+        });
       }
 
       document.addEventListener("keydown", (event) => {
+        if (paused) return;
         const key = event.key.toLowerCase();
         const control = controls[key];
 
@@ -807,9 +946,25 @@
         }
       });
 
+      touchControls.addEventListener("click", (event) => {
+        const button = event.target.closest("[data-touch-control]");
+        if (!button || paused || gameOver || button.disabled) {
+          return;
+        }
+
+        const playerIndex = Number(button.dataset.player);
+        if (button.dataset.action === "bomb") {
+          placeBomb(playerIndex);
+          return;
+        }
+
+        movePlayer(playerIndex, Number(button.dataset.row), Number(button.dataset.column));
+      });
+
       window.addEventListener("blur", () => heldControls.clear());
       window.setInterval(() => {
         const now = Date.now();
+        if (paused) return;
         heldControls.forEach(({ control, repeatAt }) => {
           if (now >= repeatAt) {
             movePlayer(...control);
@@ -835,7 +990,12 @@
         restartGame();
       });
       restartButton.addEventListener("click", restartGame);
+      window.addEventListener("game-resume",event=>{const elapsed=event.detail.elapsed;players.forEach(player=>{if(player.frozenUntil)player.frozenUntil+=elapsed;if(player.shieldUntil)player.shieldUntil+=elapsed;});if(swordExpiresAt)swordExpiresAt+=elapsed;if(shieldNextSpawnAt)shieldNextSpawnAt+=elapsed;lastBotBomb+=elapsed;lastBotMove+=elapsed;});
       restartGame();
+          initPauseSystem();
     </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
   </body>
 </html>

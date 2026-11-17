@@ -26,7 +26,12 @@
     .controls { color:var(--muted); font-size:.88rem; margin:16px 0 0; text-align:center; } kbd { background:#0c1726; border:1px solid #5b7698; border-radius:4px; color:#fff; padding:2px 6px; }
     .legend { color:var(--muted); display:flex; flex-wrap:wrap; font-size:.82rem; gap:14px; justify-content:center; margin-top:13px; } .dot { border-radius:50%; display:inline-block; height:10px; margin-right:4px; width:10px; } .dot.coin { background:var(--gold); } .dot.boost { background:#55dfff; }
     @media (max-width:680px) { .track-grid { grid-template-columns:1fr; } .hud { gap:8px; justify-content:center; } .boost-meter { width:95px; } }
-  </style>
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
+    </style>
 </head>
 <body>
   <main>
@@ -62,6 +67,26 @@
     <div class="legend"><span><i class="dot coin"></i>Coin: +20 boost</span><span><i class="dot boost"></i>Power Spark: +45 boost</span><span>Rival cars swerve and use their own boosts.</span></div>
   </main>
   <script>
+      const PAUSE_STORAGE_KEY = "pause-coolcart";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return running; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
     const canvas = document.getElementById("race");
     const ctx = canvas.getContext("2d");
     const lapElement = document.getElementById("lap");
@@ -321,6 +346,7 @@
 
     function frame(now) {
       if (!running) return;
+      if (paused) { animation = window.requestAnimationFrame(frame); return; }
       const dt = Math.min(.05, (now - lastFrame) / 1000 || .016);
       lastFrame = now; updatePlayer(dt, now); updateRivals(dt); draw(now);
       const place = standings().findIndex(entry => entry.id === "player") + 1;
@@ -343,6 +369,10 @@
     window.addEventListener("keydown", event => { if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"," "].includes(event.key)) event.preventDefault(); keys.add(event.key); });
     window.addEventListener("keyup", event => keys.delete(event.key));
     resetRace(); draw(0);
-  </script>
-</body>
+        initPauseSystem();
+    </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
+  </body>
 </html>

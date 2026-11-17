@@ -41,6 +41,11 @@
       .rules { color: #d8d0b4; font-size: .88rem; line-height: 1.4; }
       .footer-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
       @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } #map { max-width: 580px; } }
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
     </style>
   </head>
   <body>
@@ -78,6 +83,26 @@
       </div>
     </main>
     <script>
+      const PAUSE_STORAGE_KEY = "pause-africa-conquest";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return !gameOver; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
       const territories = [
         ["Morocco", ["Algeria"], 24, 14],
         ["Algeria", ["Morocco", "Libya", "Niger"], 40, 18],
@@ -165,9 +190,9 @@
         phaseElement.textContent = phase[0].toUpperCase() + phase.slice(1);
         turnTitleElement.textContent = gameOver ? statusElement.textContent : `${playerName(currentPlayer)}'s turn`;
         turnTitleElement.className = `turn ${currentPlayer === 0 ? "blue" : "red"}`;
-        attackButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "attack" || !selectedSource || !selectedTarget;
-        fortifyButton.disabled = gameOver || currentPlayer === 1 && botEnabled || phase !== "fortify" || !selectedSource || !selectedTarget;
-        endPhaseButton.disabled = gameOver || currentPlayer === 1 && botEnabled || isSetupPhase();
+        attackButton.disabled = paused || gameOver || currentPlayer === 1 && botEnabled || phase !== "attack" || !selectedSource || !selectedTarget;
+        fortifyButton.disabled = paused || gameOver || currentPlayer === 1 && botEnabled || phase !== "fortify" || !selectedSource || !selectedTarget;
+        endPhaseButton.disabled = paused || gameOver || currentPlayer === 1 && botEnabled || isSetupPhase();
         endPhaseButton.textContent = phase === "deploy" ? "Finish deployment" : phase === "attack" ? "Go to fortify" : phase === "fortify" ? "End turn" : "Setup in progress";
       }
 
@@ -203,7 +228,7 @@
       }
 
       function runBotSetupTurn() {
-        if (!botEnabled || gameOver || currentPlayer !== 1 || !isSetupPhase()) return;
+        if (paused || !botEnabled || gameOver || currentPlayer !== 1 || !isSetupPhase()) return;
         const choices = phase === "claim" ? territories.filter((territory) => territory.owner === null) : ownedTerritories(1);
         const territory = choices[Math.floor(Math.random() * choices.length)];
         if (phase === "claim") territory.owner = 1;
@@ -212,11 +237,11 @@
         reinforcements = SETUP_TROOPS_PER_PLAYER - troopsPlaced[1];
         setStatus(`Bot placed a troop on ${territory.name}.`);
         render();
-        window.setTimeout(continueSetup, 450);
+        window.setTimeout(() => { if (!paused) continueSetup(); }, 450);
       }
 
       function selectTerritory(territory) {
-        if (gameOver || (botEnabled && currentPlayer === 1)) return;
+        if (paused || gameOver || (botEnabled && currentPlayer === 1)) return;
         if (phase === "claim") {
           if (territory.owner !== null) { setStatus("Choose an unclaimed territory."); render(); return; }
           territory.owner = currentPlayer;
@@ -306,13 +331,13 @@
       }
 
       attackButton.addEventListener("click", () => {
-        if (!selectedSource || !selectedTarget) return;
+        if (paused || !selectedSource || !selectedTarget) return;
         setStatus(attack(selectedSource, selectedTarget, Number(attackDiceElement.value)));
         if (!checkWinner()) { selectedTarget = null; render(); }
       });
 
       fortifyButton.addEventListener("click", () => {
-        if (!selectedSource || !selectedTarget || selectedSource.armies < 2) { setStatus("The source territory needs at least two armies."); render(); return; }
+        if (paused || !selectedSource || !selectedTarget || selectedSource.armies < 2) { setStatus("The source territory needs at least two armies."); render(); return; }
         const armiesToMove = selectedSource.armies - 1;
         selectedSource.armies = 1;
         selectedTarget.armies += armiesToMove;
@@ -323,6 +348,7 @@
       });
 
       endPhaseButton.addEventListener("click", () => {
+        if (paused) return;
         if (phase === "deploy" && reinforcements > 0) { setStatus("Deploy all reinforcements first."); render(); return; }
         if (phase === "deploy") { phase = "attack"; setStatus("Select a territory, then an adjacent enemy to attack."); }
         else if (phase === "attack") { phase = "fortify"; selectedSource = null; selectedTarget = null; setStatus("You may fortify one adjacent territory, or end your turn."); }
@@ -333,7 +359,7 @@
       });
 
       function runBotTurn() {
-        if (!botEnabled || gameOver || currentPlayer !== 1) return;
+        if (paused || !botEnabled || gameOver || currentPlayer !== 1) return;
         const botTerritories = ownedTerritories(1);
         for (let army = 0; army < reinforcements; army += 1) botTerritories[Math.floor(Math.random() * botTerritories.length)].armies += 1;
         reinforcements = 0;
@@ -344,7 +370,7 @@
           if (checkWinner()) return;
         } else setStatus("Bot deployed its armies and had no attack.");
         render();
-        window.setTimeout(() => { currentPlayer = 0; startTurn(); }, 800);
+        window.setTimeout(() => { if (paused) return; currentPlayer = 0; startTurn(); }, 800);
       }
 
       function newGame() {
@@ -366,7 +392,12 @@
         newGame();
       });
       restartButton.addEventListener("click", newGame);
+      window.addEventListener("game-resume",()=>{if(botEnabled&&currentPlayer===1)window.setTimeout(isSetupPhase()?runBotSetupTurn:runBotTurn,0);});
       newGame();
+          initPauseSystem();
     </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
   </body>
 </html>

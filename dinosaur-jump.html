@@ -4,12 +4,37 @@
   <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Dinosaur Jump | My Online Game</title>
   <style>
     :root { color-scheme:dark; font-family:Arial,sans-serif; } * { box-sizing:border-box; } body { background:radial-gradient(circle at top,#25437a,#10172b 65%); color:#f8fbff; margin:0; min-height:100vh; } main { margin:auto; max-width:720px; padding:28px 14px 40px; text-align:center; } a { color:#ffcf3f; } .panel { background:#141f3ae0; border:1px solid #ffffff2e; border-radius:18px; padding:18px; } fieldset { border:0; margin:12px 0; padding:0; } label { cursor:pointer; } button { background:#ffcf3f; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:10px 15px; } button:focus-visible,canvas:focus-visible { outline:3px solid white; outline-offset:3px; } canvas { background:#0b1428; border:3px solid #4672b8; border-radius:8px; display:block; margin:15px auto; max-width:100%; } #status { color:#c8d5f0; min-height:1.5em; }
-  </style>
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
+    </style>
 </head>
 <body><main><a href="index.html">← Back to games</a><h1>Dinosaur Jump</h1><p>Jump over cacti and ground birds. Tap Down Arrow to duck under flying birds.</p><section class="panel" aria-label="Dinosaur Jump game">
   <fieldset><legend>Difficulty</legend><label><input type="radio" name="difficulty" value="easy" checked> Easy</label> <label><input type="radio" name="difficulty" value="medium"> Medium</label> <label><input type="radio" name="difficulty" value="hard"> Hard</label></fieldset>
   <button id="restart" type="button">Start run</button><p><strong>Score: <span id="score">0</span> · High score: <span id="high-score">0</span> · Speed: <span id="speed">0.0</span></strong></p><canvas id="game" width="640" height="240" tabindex="0" role="application" aria-label="Dinosaur Jump. Press Space, Up Arrow, or click to jump. Tap Down Arrow to duck under flying birds."></canvas><p id="status" role="status">Press Start run, then jump with Space, Up, or a click. Tap Down Arrow to duck under flying birds.</p>
   </section></main><script>
+      const PAUSE_STORAGE_KEY = "pause-dinosaur-jump";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return running; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
     const canvas=document.querySelector("#game"),ctx=canvas.getContext("2d"),scoreEl=document.querySelector("#score"),highScoreEl=document.querySelector("#high-score"),speedEl=document.querySelector("#speed"),status=document.querySelector("#status");const levels={easy:{speed:4,gap:115},medium:{speed:6,gap:85},hard:{speed:8,gap:62}},groundY=210,DUCK_DURATION=620;let dino,obstacle,score,running,last,settings,startedAt,duckTimer;
     function highScore(){return Number(localStorage.getItem("dinosaur-jump-high-score"))||0;}
     function renderHighScore(){highScoreEl.textContent=highScore();}
@@ -19,8 +44,13 @@
     function drawDino(){const{x,y,ducking}=dino;ctx.save();ctx.translate(x,y);ctx.fillStyle="#3ba96b";ctx.strokeStyle="#1d6c49";ctx.lineWidth=2;ctx.beginPath();if(ducking){ctx.moveTo(1,25);ctx.lineTo(10,17);ctx.lineTo(28,17);ctx.lineTo(38,8);ctx.lineTo(45,9);ctx.lineTo(45,19);ctx.lineTo(34,23);ctx.lineTo(31,30);ctx.lineTo(29,30);ctx.lineTo(27,24);ctx.lineTo(17,25);ctx.lineTo(15,30);ctx.lineTo(12,30);ctx.lineTo(12,25);ctx.closePath();}else{ctx.moveTo(1,42);ctx.lineTo(12,30);ctx.lineTo(17,19);ctx.lineTo(17,7);ctx.lineTo(30,5);ctx.lineTo(41,10);ctx.lineTo(40,20);ctx.lineTo(29,23);ctx.lineTo(27,35);ctx.lineTo(33,46);ctx.lineTo(29,53);ctx.lineTo(24,53);ctx.lineTo(24,43);ctx.lineTo(18,43);ctx.lineTo(16,53);ctx.lineTo(11,53);ctx.lineTo(11,42);ctx.lineTo(6,46);ctx.closePath();}ctx.fill();ctx.stroke();ctx.fillStyle="#d6ffd7";ctx.beginPath();ctx.arc(33,12,2.3,0,Math.PI*2);ctx.fill();ctx.fillStyle="#152a22";ctx.beginPath();ctx.arc(33,12,1,0,Math.PI*2);ctx.fill();ctx.restore();}
     function drawCactus(){const{x,y,w,h,arms}=obstacle,center=x+w/2,top=y+5,left=x+w*.28,right=x+w*.72,radius=w*.22;ctx.save();ctx.lineCap="round";ctx.strokeStyle="#1f7b52";ctx.lineWidth=3;ctx.fillStyle="#3eb879";ctx.beginPath();ctx.moveTo(left,y+h);ctx.lineTo(left,top+radius);ctx.quadraticCurveTo(left,top,right-radius,top);ctx.quadraticCurveTo(right,top,right,top+radius);ctx.lineTo(right,y+h);ctx.closePath();ctx.fill();ctx.stroke();if(arms){const armY=y+h*.56;ctx.beginPath();ctx.moveTo(left,armY);ctx.lineTo(x+w*.02,armY);ctx.lineTo(x+w*.02,armY-h*.23);ctx.stroke();ctx.beginPath();ctx.moveTo(right,armY+h*.12);ctx.lineTo(x+w*.98,armY+h*.12);ctx.lineTo(x+w*.98,armY-h*.1);ctx.stroke();}ctx.strokeStyle="#91e8ae";ctx.lineWidth=1;for(let stem=0;stem<3;stem++){const stemX=x+w*(.37+stem*.13);ctx.beginPath();ctx.moveTo(stemX,y+8);ctx.lineTo(stemX,y+h-5);ctx.stroke();}ctx.fillStyle="#d7e0a0";for(let spikeY=y+11;spikeY<y+h-8;spikeY+=9){ctx.fillRect(center-w*.25,spikeY,2,2);ctx.fillRect(center+w*.2,spikeY+4,2,2);}ctx.restore();}
     function draw(){ctx.fillStyle="#0b1428";ctx.fillRect(0,0,640,240);ctx.strokeStyle="#c8d5f0";ctx.beginPath();ctx.moveTo(0,groundY);ctx.lineTo(640,groundY);ctx.stroke();if(obstacle.type.includes("bird")){ctx.font="28px Arial";ctx.fillText("🐦",obstacle.x,obstacle.y+24);}else drawCactus();drawDino();}
-    function loop(now){if(!running)return;const dt=Math.min(2,(now-last)/16.67),speed=settings.speed+(now-startedAt)/10000;last=now;speedEl.textContent=speed.toFixed(1);dino.vy+=.65*dt;dino.y+=dino.vy*dt;if(dino.y>groundY-dino.h){dino.y=groundY-dino.h;dino.vy=0;}obstacle.x-=speed*dt;if(obstacle.x+obstacle.w<0){obstacle=createObstacle();obstacle.x=640+Math.random()*settings.gap;score++;scoreEl.textContent=score;}const overlapsX=dino.x+dino.w>obstacle.x&&dino.x<obstacle.x+obstacle.w,overlapsY=dino.y+dino.h>obstacle.y&&dino.y<obstacle.y+obstacle.h,jumping=dino.y<groundY-dino.h-1;if(overlapsX&&(overlapsY||(obstacle.type==="flying-bird"&&jumping))){finishGame(obstacle.type==="flying-bird"&&jumping?"Jumping into a flying bird is a hit.":"Restart to run again.");return;}draw();requestAnimationFrame(loop);}
+    function loop(now){if(!running||paused)return;const dt=Math.min(2,(now-last)/16.67),speed=settings.speed+(now-startedAt)/10000;last=now;speedEl.textContent=speed.toFixed(1);dino.vy+=.65*dt;dino.y+=dino.vy*dt;if(dino.y>groundY-dino.h){dino.y=groundY-dino.h;dino.vy=0;}obstacle.x-=speed*dt;if(obstacle.x+obstacle.w<0){obstacle=createObstacle();obstacle.x=640+Math.random()*settings.gap;score++;scoreEl.textContent=score;}const overlapsX=dino.x+dino.w>obstacle.x&&dino.x<obstacle.x+obstacle.w,overlapsY=dino.y+dino.h>obstacle.y&&dino.y<obstacle.y+obstacle.h,jumping=dino.y<groundY-dino.h-1;if(overlapsX&&(overlapsY||(obstacle.type==="flying-bird"&&jumping))){finishGame(obstacle.type==="flying-bird"&&jumping?"Jumping into a flying bird is a hit.":"Restart to run again.");return;}draw();requestAnimationFrame(loop);}
     function jump(){if(running&&dino.y>=groundY-dino.h-1){clearTimeout(duckTimer);dino.ducking=false;dino.h=54;dino.y=groundY-dino.h;dino.vy=-12;}}
-    function duck(){if(!running||dino.y<groundY-dino.h-1||dino.ducking)return;dino.ducking=true;dino.h=30;dino.y=groundY-dino.h;duckTimer=setTimeout(()=>{if(running){dino.ducking=false;dino.h=54;dino.y=groundY-dino.h;}},DUCK_DURATION);}
+    function duck(){if(!running||dino.y<groundY-dino.h-1||dino.ducking)return;dino.ducking=true;dino.h=30;dino.y=groundY-dino.h;duckTimer=setTimeout(()=>{if(running&&!paused){dino.ducking=false;dino.h=54;dino.y=groundY-dino.h;}},DUCK_DURATION);}
     document.querySelector("#restart").addEventListener("click",reset);canvas.addEventListener("click",jump);document.addEventListener("keydown",e=>{if(e.key==="ArrowDown"){e.preventDefault();if(e.repeat)finishGame("Holding Down Arrow is a hit — tap it once to duck.");else duck();}if([" ","ArrowUp","w","W"].includes(e.key)){e.preventDefault();jump();}});dino={x:65,y:156,vy:0,w:44,h:54,ducking:false};obstacle={x:640,w:30,h:52,y:groundY-52,type:"cactus",arms:true};settings=levels.easy;score=0;renderHighScore();draw();
-  </script></body></html>
+        window.addEventListener("game-resume",()=>{if(running){if(dino.ducking){dino.ducking=false;dino.h=54;dino.y=groundY-dino.h;}last=performance.now();requestAnimationFrame(loop);}});
+      initPauseSystem();
+    </script>
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
+  </body></html>

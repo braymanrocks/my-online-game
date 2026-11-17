@@ -36,6 +36,11 @@
       textarea:disabled { opacity: .65; }
       #status { color: #c8d5f0; min-height: 1.5em; }
       @media (max-width: 550px) { .stats { grid-template-columns: 1fr; } input, select { display: block; margin: 7px 0 0; width: 100%; } }
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
     </style>
   </head>
   <body>
@@ -58,11 +63,31 @@
         <p id="passage" aria-label="Passage to type"></p>
         <div class="track" aria-label="Typing race track"><div class="finish" aria-label="Finish line"></div><span id="car" class="car" aria-label="Your car">🏎️</span></div>
         <label for="typing">Type the passage</label>
-        <textarea id="typing" disabled spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="status"></textarea>
-        <p id="status" role="status">Press Start race to begin. Your best WPM is saved on this device.</p>
+        <button id="type-p" type="button" aria-label="Enter the letter P">Type P</button><textarea id="typing" disabled spellcheck="false" autocapitalize="off" autocomplete="off" aria-describedby="status"></textarea>
+        <p id="status" role="status">Press Start race to begin. P pauses; use Type P when that letter is needed. Your best WPM is saved on this device.</p>
       </section>
     </main>
     <script>
+      const PAUSE_STORAGE_KEY = "pause-typing-race";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return !!timer; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
       const RACES = {
         easy: { seconds: 40, passage: "The bright car races down the road. Type each word carefully and reach the finish line." },
         medium: { seconds: 25, passage: "A quick explorer crossed the bright valley at sunrise. Every careful step revealed a new trail, a hidden stream, and a chance to learn something useful." },
@@ -119,6 +144,7 @@
       }
 
       function updateStats() {
+        if (paused) return;
         const elapsed = Math.min(race.seconds, Math.floor((Date.now() - startedAt) / 1000));
         const { wpm, accuracy } = measurements();
         timeElement.textContent = race.seconds - elapsed;
@@ -164,6 +190,7 @@
       }
 
       typingElement.addEventListener("input", () => {
+        if (paused) return;
         if (typingElement.value.length > passage.length) typingElement.value = typingElement.value.slice(0, passage.length);
         renderPassage();
         updateCar();
@@ -179,9 +206,15 @@
         updateCar();
       });
       restartButton.addEventListener("click", startRace);
+      document.querySelector("#type-p").addEventListener("click",()=>{if(!typingElement.disabled&&!paused){typingElement.value+="p";typingElement.dispatchEvent(new Event("input"));typingElement.focus();}});
+      window.addEventListener("game-resume",event=>{if(timer)startedAt+=event.detail.elapsed;});
       renderPassage();
       updateCar();
       renderHighScore();
+          initPauseSystem();
     </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
   </body>
 </html>

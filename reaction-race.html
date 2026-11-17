@@ -9,7 +9,12 @@
     .controls { color:#c8d5f0; line-height:1.5; margin:14px auto; max-width:620px; } kbd { background:#0b1428; border:1px solid #91a8cb; border-radius:5px; color:#fff; display:inline-block; font:inherit; font-weight:bold; margin:0 2px; min-width:2.1em; padding:4px 7px; } #prompt { align-items:center; background:#27405f; border:3px solid #6d91be; border-radius:16px; display:flex; gap:22px; justify-content:center; margin:20px auto; max-width:470px; min-height:150px; } #arrow { font-size:clamp(4rem,14vw,6.8rem); line-height:1; } #letter { background:#10243e; border:2px solid #cce1ff; border-radius:12px; font-size:clamp(2.5rem,10vw,4.5rem); font-weight:bold; min-width:1.3em; padding:8px 14px; }
     .scoreboard { display:grid; gap:10px; grid-template-columns:repeat(2,minmax(0,1fr)); margin:16px auto; max-width:620px; } .score { border:2px solid; border-radius:10px; padding:9px; } .score.p1 { border-color:#70c9ff; } .score.p2 { border-color:#ff8e7c; } .score strong { display:block; font-size:1.45rem; } .track { background:repeating-linear-gradient(90deg,#333f51 0 36px,#3d4c61 36px 72px); border:4px solid #dfe8f7; border-radius:13px; margin:20px auto; max-width:660px; overflow:hidden; position:relative; } .finish { background:repeating-conic-gradient(#111 0 25%,#fff 0 50%) 0 / 14px 14px; bottom:0; position:absolute; right:7%; top:0; width:16px; z-index:2; } .lane { border-bottom:2px dashed #a9bacf; height:86px; position:relative; } .lane:last-child { border-bottom:0; } .lane-label { left:9px; position:absolute; top:8px; } .car { font-size:2.8rem; left:4%; line-height:1; position:absolute; top:24px; transform:scaleX(-1); transition:left 180ms ease-out; z-index:3; } .car.p2 { filter:hue-rotate(135deg); } #status { color:#c8d5f0; min-height:1.5em; }
     @media (max-width:520px) { main { padding:20px 10px 32px; } .panel { padding:15px 10px; } .lane { height:70px; } .car { font-size:2.25rem; top:19px; } }
-  </style>
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
+    </style>
 </head>
 <body>
   <main>
@@ -35,16 +40,40 @@
     </section>
   </main>
   <script>
+      const PAUSE_STORAGE_KEY = "pause-reaction-race";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return running; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
     const start=document.querySelector("#start"),arrowEl=document.querySelector("#arrow"),letterEl=document.querySelector("#letter"),p1ScoreEl=document.querySelector("#p1-score"),p2ScoreEl=document.querySelector("#p2-score"),p1Car=document.querySelector("#p1-car"),p2Car=document.querySelector("#p2-car"),status=document.querySelector("#status");
     const prompts=[{arrow:"↑",letter:"W",p1:"w",p2:"ArrowUp"},{arrow:"←",letter:"A",p1:"a",p2:"ArrowLeft"},{arrow:"↓",letter:"S",p1:"s",p2:"ArrowDown"},{arrow:"→",letter:"D",p1:"d",p2:"ArrowRight"}];
     const MOVES_TO_WIN=20; let scores=[0,0],currentPrompt,running=false;
     function updateRace(){p1ScoreEl.textContent=`${scores[0]} / ${MOVES_TO_WIN}`;p2ScoreEl.textContent=`${scores[1]} / ${MOVES_TO_WIN}`;p1Car.style.left=`${4+scores[0]*4.25}%`;p2Car.style.left=`${4+scores[1]*4.25}%`;}
     function nextPrompt(){currentPrompt=prompts[Math.floor(Math.random()*prompts.length)];arrowEl.textContent=currentPrompt.arrow;letterEl.textContent=currentPrompt.letter;document.querySelector("#prompt").setAttribute("aria-label",`Press ${currentPrompt.letter} or ${currentPrompt.arrow}`);}
     function finish(player){running=false;arrowEl.textContent="🏁";letterEl.textContent="!";start.textContent="Race again";status.textContent=`Player ${player+1} wins the race with ${MOVES_TO_WIN} moves!`;}
-    function movePlayer(player){if(!running)return;scores[player]+=1;updateRace();if(scores[player]===MOVES_TO_WIN){finish(player);return;}status.textContent=`Player ${player+1} moved forward!`;nextPrompt();}
+    function movePlayer(player){if(!running||paused)return;scores[player]+=1;updateRace();if(scores[player]===MOVES_TO_WIN){finish(player);return;}status.textContent=`Player ${player+1} moved forward!`;nextPrompt();}
     start.addEventListener("click",()=>{scores=[0,0];running=true;start.textContent="Restart race";updateRace();nextPrompt();status.textContent="Go! Match the arrow or letter before your opponent.";});
     document.addEventListener("keydown",event=>{if(!running||event.repeat)return;const key=event.key.length===1?event.key.toLowerCase():event.key;if(key===currentPrompt.p1){event.preventDefault();movePlayer(0);}else if(key===currentPrompt.p2){event.preventDefault();movePlayer(1);}});
     updateRace();
-  </script>
-</body>
+        initPauseSystem();
+    </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
+  </body>
 </html>

@@ -21,7 +21,12 @@
     .mode-buttons { display:grid; gap:12px; grid-template-columns:1fr 1fr; margin:22px 0; } .mode-buttons button { min-height:115px; text-align:left; } .mode-buttons strong { display:block; font-size:1.2rem; margin-bottom:8px; } .mode-buttons small { color:#c1d4eb; line-height:1.4; }
     .help { color:var(--muted); font-size:.85rem; margin-top:16px; text-align:center; }
     @media (max-width:760px) { .battle-layout { grid-template-columns:1fr; } .board { max-width:650px; width:100%; } .sidebar { display:grid; grid-template-columns:1fr 1fr; } .status { grid-column:1/-1; } } @media (max-width:460px) { .sidebar,.mode-buttons { grid-template-columns:1fr; } }
-  </style>
+
+      .pause-toggle { background:#ffd45d; border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:9px 13px; position:fixed; right:18px; top:18px; z-index:100; }
+      .pause-toggle:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .pause-overlay { align-items:center; background:rgba(4,12,24,.9); display:flex; inset:0; justify-content:center; padding:20px; position:fixed; text-align:center; z-index:101; }
+      .pause-overlay[hidden] { display:none; } .pause-overlay__card { background:#182d46; border:2px solid #ffd45d; border-radius:16px; max-width:440px; padding:28px; } .pause-overlay__card p { color:#d5e4f7; }
+    </style>
 </head>
 <body>
   <main>
@@ -50,6 +55,26 @@
     </section>
   </main>
   <script>
+      const PAUSE_STORAGE_KEY = "pause-army-command";
+      let paused = sessionStorage.getItem(PAUSE_STORAGE_KEY) === "true";
+      let pauseStartedAt = paused ? Date.now() : 0;
+      const pauseOverlay = document.getElementById("pause-overlay");
+      const pauseToggleButton = document.getElementById("pause-toggle");
+      function isPauseableGameActive() { return !!mode && !gameOver; }
+      function renderPauseState() { pauseOverlay.hidden = !paused; pauseToggleButton.textContent = paused ? "Continue (P)" : "Pause (P)"; pauseToggleButton.setAttribute("aria-pressed", String(paused)); }
+      function setGamePaused(nextPaused) {
+        if (nextPaused && !isPauseableGameActive()) return;
+        if (paused === nextPaused) return;
+        paused = nextPaused;
+        if (paused) { pauseStartedAt = Date.now(); sessionStorage.setItem(PAUSE_STORAGE_KEY, "true"); }
+        else { const elapsed = pauseStartedAt ? Date.now() - pauseStartedAt : 0; sessionStorage.removeItem(PAUSE_STORAGE_KEY); window.dispatchEvent(new CustomEvent("game-resume", { detail: { elapsed } })); }
+        renderPauseState();
+      }
+      function initPauseSystem() {
+        renderPauseState(); pauseToggleButton.addEventListener("click", () => setGamePaused(!paused)); document.getElementById("pause-resume").addEventListener("click", () => setGamePaused(false));
+        document.addEventListener("keydown", event => { if (event.key.toLowerCase() === "p" && !event.repeat) { event.preventDefault(); event.stopImmediatePropagation(); setGamePaused(!paused); return; } if (paused) { event.preventDefault(); event.stopImmediatePropagation(); } }, true);
+      }
+
     const board = document.getElementById("board");
     const turnLabel = document.getElementById("turn-label");
     const status = document.getElementById("status");
@@ -88,7 +113,7 @@
     }
 
     function selectedUnit() { return units.find(unit => unit.id === selectedId); }
-    function canControl(side) { return !gameOver && (mode === "two-player" || side === 0 || !mode); }
+    function canControl(side) { return !paused && !gameOver && (mode === "two-player" || side === 0 || !mode); }
 
     function possibleMove(unit, row, column) {
       return !unitAt(row,column) && !blockedTiles.has(`${column},${row}`) && distance(unit,{row,column}) <= unitTypes[unit.type].move;
@@ -185,7 +210,7 @@
     }
 
     function endTurn() {
-      if (gameOver) return;
+      if (paused || gameOver) return;
       turn = 1 - turn; selectedId = null;
       activeUnits(turn).forEach(unit => { unit.acted = false; });
       status.textContent = `${turn === 0 ? "Blue" : "Red"} army, choose a unit.`;
@@ -194,12 +219,12 @@
     }
 
     function robotTurn() {
-      if (gameOver || turn !== 1) return;
+      if (paused || gameOver || turn !== 1) return;
       const robotUnits = activeUnits(1);
       let step = 0;
       function takeAction() {
         const unit = robotUnits[step++];
-        if (!unit || gameOver || turn !== 1) { if (!gameOver && turn === 1) endTurn(); return; }
+        if (paused || !unit || gameOver || turn !== 1) { if (!gameOver && turn === 1) endTurn(); return; }
         const enemies = activeUnits(0).sort((a,b) => distance(unit,a) - distance(unit,b));
         const target = enemies[0];
         if (!target) return;
@@ -225,8 +250,13 @@
 
     document.querySelectorAll("[data-mode]").forEach(button => button.addEventListener("click", () => startGame(button.dataset.mode)));
     endTurnButton.addEventListener("click", endTurn);
+    window.addEventListener("game-resume",()=>{if(mode==="robot"&&turn===1&&!gameOver)window.setTimeout(robotTurn,0);});
     document.getElementById("play-again").addEventListener("click", () => startGame(mode));
     render();
-  </script>
-</body>
+        initPauseSystem();
+    </script>
+
+    <button id="pause-toggle" class="pause-toggle" type="button" aria-pressed="false">Pause (P)</button>
+    <div id="pause-overlay" class="pause-overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title" hidden><div class="pause-overlay__card"><h2 id="pause-title">Game paused</h2><p>Your game is paused. Press P or use Continue to resume.</p><button id="pause-resume" type="button">Continue</button></div></div>
+  </body>
 </html>
