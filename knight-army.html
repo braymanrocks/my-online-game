@@ -1,0 +1,592 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Knight &amp; Army | My Online Game</title>
+    <style>
+      :root { color-scheme: dark; font-family: Arial, sans-serif; --gold:#ffd44f; --ink:#f7fbff; --muted:#bfd1e8; }
+      * { box-sizing:border-box; }
+      body { background:radial-gradient(circle at top,#344f8a,#10172b 72%); color:var(--ink); margin:0; min-height:100vh; }
+      main { margin:auto; max-width:980px; padding:24px 16px 46px; }
+      a { color:var(--gold); } h1 { font-size:clamp(2.4rem,7vw,4.7rem); letter-spacing:-.07em; margin:14px 0 4px; text-align:center; }
+      .tagline { color:var(--muted); margin:0 auto 22px; text-align:center; }
+      .panel { background:#141f3ae8; border:1px solid #ffffff30; border-radius:20px; box-shadow:0 18px 45px #0005; padding:20px; }
+      .mode-row, .setup-grid, .battle-grid { display:grid; gap:16px; }
+      .mode-row { grid-template-columns:repeat(2,minmax(0,1fr)); margin-bottom:18px; }
+      .setup-grid { grid-template-columns:repeat(2,minmax(0,1fr)); }
+      .mode, .commander { background:#1b2c4b; border:2px solid #526b94; border-radius:14px; padding:16px; }
+      .mode { color:var(--ink); cursor:pointer; font:inherit; text-align:left; }
+      .mode.selected, .mode:focus-visible { border-color:var(--gold); outline:none; }
+      .mode strong, .commander h2 { display:block; margin-bottom:7px; }
+      .mode small, .hint { color:var(--muted); line-height:1.45; }
+      label { color:var(--muted); display:block; font-size:.9rem; font-weight:bold; margin-top:14px; }
+      input, select { background:#0d192e; border:1px solid #6881aa; border-radius:8px; color:var(--ink); font:inherit; margin-top:6px; padding:10px; width:100%; }
+      .class-info { color:var(--muted); font-size:.88rem; min-height:2.6em; }
+      .army-row { align-items:center; display:grid; gap:9px; grid-template-columns:1fr auto auto auto; margin:10px 0; }
+      .army-row span:first-child { color:var(--ink); }
+      .army-row button, .action { background:var(--gold); border:0; border-radius:8px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:7px 11px; }
+      .army-row button:disabled { cursor:not-allowed; opacity:.4; }
+      .army-count { color:var(--gold); font-weight:bold; min-width:22px; text-align:center; }
+      .total { border-top:1px solid #ffffff25; color:var(--muted); margin-top:13px; padding-top:11px; }
+      .center { text-align:center; } #start-battle { margin:20px auto 0; padding:12px 22px; }
+      [hidden] { display:none !important; }
+      .battle-grid { grid-template-columns:1fr auto 1fr; margin-top:18px; }
+      .fighter { background:#1b2c4b; border:2px solid #526b94; border-radius:14px; padding:16px; }
+      .fighter.active { border-color:var(--gold); box-shadow:0 0 0 2px #ffd44f44; }
+      .fighter h2 { margin:0 0 10px; }
+      .bar { background:#0b1428; border-radius:99px; height:15px; margin:7px 0 12px; overflow:hidden; }
+      .bar span { background:linear-gradient(90deg,#ff667d,#ffcf52); display:block; height:100%; transition:width .25s; }
+      .army-list { color:var(--muted); line-height:1.7; }
+      .versus { align-self:center; color:var(--gold); font-size:1.5rem; font-weight:bold; }
+      .battlefield { align-items:center; background:linear-gradient(90deg,#2c5b43,#5d7c4c 48%,#506d46 52%,#284b3a); border:2px solid #6c86ad; border-radius:16px; display:grid; gap:10px; grid-template-columns:1fr auto 1fr; margin-top:18px; min-height:250px; overflow:hidden; padding:18px 12px; position:relative; }
+      .battlefield::after { background:repeating-linear-gradient(0deg,transparent 0 34px,#ffffff12 34px 36px); content:""; inset:0; pointer-events:none; position:absolute; }
+      .visual-side { align-self:stretch; display:flex; flex-direction:column; justify-content:center; min-width:0; position:relative; text-align:center; z-index:1; }
+      .visual-side.right { transform:scaleX(-1); } .visual-side.right .visual-name, .visual-side.right .unit-count, .visual-side.right .castle-label { transform:scaleX(-1); }
+      .visual-name { color:#fff; font-weight:bold; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+      .knight-avatar { filter:drop-shadow(0 5px 2px #0008); font-size:3.7rem; line-height:1; margin:9px 0; }
+      .unit-count { color:#e4f0ff; font-size:1.05rem; letter-spacing:2px; min-height:1.5em; overflow-wrap:anywhere; }
+      .castle-zone { background:#24354a; border:2px solid var(--gold); border-radius:12px; box-shadow:0 6px 16px #0008; color:var(--gold); min-width:96px; padding:9px 8px; position:relative; text-align:center; z-index:2; }
+      .castle-icon { font-size:3rem; line-height:1; }
+      .castle-label { display:block; font-size:.72rem; font-weight:bold; letter-spacing:.08em; margin-top:4px; }
+      .castle-bar { background:#0b1428; border-radius:99px; height:8px; margin-top:6px; overflow:hidden; }
+      .castle-bar span { background:linear-gradient(90deg,#ff667d,#ffcf52); display:block; height:100%; transition:width .25s; }
+      .castle-status { color:#fff; font-size:.76rem; }
+      .castle-mini { margin-bottom:5px; }
+      .castle-mini span:first-child { display:block; font-size:2rem; line-height:1; }
+      .castle-mini .castle-bar { margin:4px auto 0; max-width:110px; }
+      .visual-side.guarding .knight-avatar { filter:drop-shadow(0 5px 2px #0008) drop-shadow(0 0 5px #7ce0ff); }
+      .visual-side.attacking .knight-avatar { animation:charge .42s ease-in-out; }
+      .visual-side.hit .knight-avatar { animation:shake .42s ease-in-out; }
+      .battle-effect { animation:burst .55s ease-out forwards; font-size:2.5rem; left:50%; pointer-events:none; position:absolute; top:42%; transform:translate(-50%,-50%); z-index:3; }
+      @keyframes charge { 50% { transform:translateX(24px) scale(1.15); } }
+      @keyframes shake { 25%,75% { transform:translateX(-9px); } 50% { transform:translateX(9px); } }
+      @keyframes burst { 0% { opacity:1; transform:translate(-50%,-50%) scale(.5); } 100% { opacity:0; transform:translate(-50%,-80px) scale(1.35); } }
+      .battle-actions { display:flex; flex-wrap:wrap; gap:10px; justify-content:center; margin:20px 0 10px; }
+      .action { min-width:125px; padding:11px 15px; }
+      .action:disabled { cursor:not-allowed; opacity:.45; }
+      .board-wrap { background:#0b1428; border:2px solid #6c86ad; border-radius:14px; margin:18px auto 0; max-width:900px; overflow:auto; padding:8px; }
+      .board { display:grid; gap:1px; grid-template-columns:repeat(20, minmax(22px, 1fr)); margin:auto; min-width:520px; width:100%; }
+      .cell { align-items:center; background:#496b4d; border:0; color:#fff; cursor:pointer; display:flex; font-size:1rem; height:28px; justify-content:center; padding:0; position:relative; }
+      .cell:nth-child(-n+20), .cell:nth-last-child(-n+20) { background:#3e6047; }
+      .cell:hover, .cell:focus-visible { outline:2px solid #fff; outline-offset:-2px; z-index:2; }
+      .cell.valid { box-shadow:inset 0 0 0 2px #8ce2d2; }
+      .cell.castle-1, .cell.castle-2 { background:#6b563d; font-size:1.1rem; }
+      .cell.own-1 { background:#2c5570; } .cell.own-2 { background:#703e50; }
+      .cell.selected { box-shadow:inset 0 0 0 3px var(--gold); z-index:1; }
+      .cell.moved { opacity:.62; }
+      .unit-health { bottom:1px; font-size:.5rem; font-weight:bold; left:2px; line-height:1; position:absolute; }
+      .board-help { color:var(--muted); font-size:.9rem; line-height:1.5; margin:12px auto 0; max-width:800px; text-align:center; }
+      .turn-controls { align-items:center; display:flex; flex-wrap:wrap; gap:12px; justify-content:center; margin:16px 0 0; }
+      .turn-controls strong { color:var(--gold); }
+      .strategy-note { color:var(--muted); font-size:.9rem; line-height:1.5; margin:12px auto 0; max-width:800px; text-align:center; }
+      #battle-status { color:var(--muted); min-height:1.6em; text-align:center; }
+      #battle-log { background:#0b1428; border:1px solid #ffffff22; border-radius:10px; color:#c8d5f0; line-height:1.5; list-style:none; margin:16px 0 0; max-height:150px; overflow:auto; padding:12px 16px; text-align:left; }
+      @media (max-width:680px) { .setup-grid, .battle-grid { grid-template-columns:1fr; } .versus { order:2; } .battle-grid .fighter:last-child { order:3; } .mode-row { grid-template-columns:1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="index.html">← Back to games</a>
+      <h1>Knight &amp; Army</h1>
+      <p class="tagline">Forge your champion, command your army, and conquer the battlefield.</p>
+
+      <section id="setup" class="panel" aria-label="Build your knights and armies">
+        <h2>Choose your battle</h2>
+        <div class="mode-row">
+          <button class="mode selected" data-mode="robot" type="button"><strong>Fight the robot</strong><small>Build Player 1, then challenge a tactical computer commander.</small></button>
+          <button class="mode" data-mode="two-player" type="button"><strong>Two players</strong><small>Build both commanders and take turns on the same screen.</small></button>
+        </div>
+        <div class="setup-grid">
+          <article class="commander">
+            <h2>Player 1</h2>
+            <label>Knight name<input id="name-1" maxlength="18" value="Sir Nova"></label>
+            <label>Knight class<select id="class-1"><option value="guardian">Guardian</option><option value="ranger">Ranger</option><option value="berserker">Berserker</option></select></label>
+            <p id="class-info-1" class="class-info"></p>
+            <div class="army-controls" data-player="1"></div>
+            <p class="total">Army size: <strong id="total-1">50</strong> / 50</p>
+          </article>
+          <article id="commander-2" class="commander">
+            <h2 id="player-2-title">Robot Commander</h2>
+            <label>Knight name<input id="name-2" maxlength="18" value="Iron Bot"></label>
+            <label>Knight class<select id="class-2"><option value="guardian">Guardian</option><option value="ranger">Ranger</option><option value="berserker">Berserker</option></select></label>
+            <p id="class-info-2" class="class-info"></p>
+            <div class="army-controls" data-player="2"></div>
+            <p class="total">Army size: <strong id="total-2">50</strong> / 50</p>
+          </article>
+        </div>
+        <p class="hint">Each commander gets 50 units. Balance swordsmen, archers, and cavalry to create your strategy.</p>
+        <div class="center"><button id="start-battle" type="button">Start battle</button></div>
+      </section>
+
+      <section id="battle" class="panel" aria-label="Knight and Army battle" hidden>
+        <div class="battle-grid">
+          <article id="fighter-1" class="fighter"></article>
+          <div class="versus">VS</div>
+          <article id="fighter-2" class="fighter"></article>
+        </div>
+        <div class="board-wrap"><div id="board" class="board" role="grid" aria-label="15 by 20 tactical battlefield"></div></div>
+        <p id="board-help" class="board-help">Select one of your soldiers, then click a highlighted space to move or an enemy in range to attack.</p>
+        <div class="turn-controls"><span id="turn-status"></span><button id="end-turn" class="action" type="button">End turn</button></div>
+        <p id="battle-status" role="status"></p>
+        <p class="strategy-note"><strong>Rules:</strong> Swordsmen and Archers move 1 space; Cavalry move up to 2. Swordsmen and Cavalry attack adjacent targets; Archers attack up to 2 spaces away. Every soldier can move and attack once per turn. Destroy the enemy castle or wipe out the entire army.</p>
+        <ul id="battle-log" aria-label="Battle log"></ul>
+        <div class="center"><button id="new-battle" class="action" type="button">Build new army</button></div>
+      </section>
+    </main>
+    <script>
+      const UNIT_NAMES = { swords: "Swordsmen", archers: "Archers", cavalry: "Cavalry" };
+      const CLASS_INFO = {
+        guardian: { text: "Tough knight: takes 20% less damage.", hp: 125, power: 11 },
+        ranger: { text: "Sharp knight: attacks deal 15% more damage.", hp: 100, power: 14 },
+        berserker: { text: "Fierce knight: starts with powerful attacks.", hp: 90, power: 18 }
+      };
+      const UNIT_POWER = { swords: 3, archers: 4, cavalry: 5 };
+      const COUNTERS = { swords: "cavalry", archers: "swords", cavalry: "archers" };
+      const ARMY_LIMIT = 50;
+      const BOARD_ROWS = 15;
+      const BOARD_COLS = 20;
+      const UNIT_STATS = {
+        swords: { attack: 10, health: 22, move: 1, range: 1, icon: "⚔️" },
+        archers: { attack: 7, health: 20, move: 1, range: 2, icon: "🏹" },
+        cavalry: { attack: 12, health: 26, move: 2, range: 1, icon: "🐎" }
+      };
+      const setup = document.querySelector("#setup");
+      const battle = document.querySelector("#battle");
+      const commanderTwo = document.querySelector("#commander-2");
+      const modeButtons = document.querySelectorAll(".mode");
+      const players = [
+        { name: document.querySelector("#name-1"), class: document.querySelector("#class-1"), info: document.querySelector("#class-info-1"), total: document.querySelector("#total-1"), units: { swords: 20, archers: 15, cavalry: 15 } },
+        { name: document.querySelector("#name-2"), class: document.querySelector("#class-2"), info: document.querySelector("#class-info-2"), total: document.querySelector("#total-2"), units: { swords: 20, archers: 15, cavalry: 15 } }
+      ];
+      let mode = "robot";
+      let fighters;
+      let activePlayer = 0;
+      let battleOver = false;
+      let robotTimer;
+      let soldiers = [];
+      let selectedSoldier = null;
+
+      function armyTotal(units) { return Object.values(units).reduce((sum, count) => sum + count, 0); }
+
+      function renderArmyControls(playerIndex) {
+        const player = players[playerIndex];
+        const container = document.querySelector(`.army-controls[data-player="${playerIndex + 1}"]`);
+        container.innerHTML = "";
+        Object.keys(UNIT_NAMES).forEach(unit => {
+          const row = document.createElement("div");
+          row.className = "army-row";
+          row.innerHTML = `<span>${UNIT_NAMES[unit]}</span><button type="button" data-unit="${unit}" data-change="-1" aria-label="Remove ${UNIT_NAMES[unit]}">−</button><strong class="army-count">${player.units[unit]}</strong><button type="button" data-unit="${unit}" data-change="1" aria-label="Add ${UNIT_NAMES[unit]}">+</button>`;
+          row.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
+            const change = Number(button.dataset.change);
+            if (change > 0 && armyTotal(player.units) >= ARMY_LIMIT) return;
+            if (change < 0 && player.units[unit] <= 0) return;
+            player.units[unit] += change;
+            renderArmyControls(playerIndex);
+          }));
+          container.append(row);
+        });
+        player.total.textContent = String(armyTotal(player.units));
+      }
+
+      function renderClassInfo(playerIndex) {
+        players[playerIndex].info.textContent = CLASS_INFO[players[playerIndex].class.value].text;
+      }
+
+      function setMode(nextMode) {
+        mode = nextMode;
+        modeButtons.forEach(button => button.classList.toggle("selected", button.dataset.mode === mode));
+        commanderTwo.querySelector("h2").textContent = mode === "robot" ? "Robot Commander" : "Player 2";
+        document.querySelector("#name-2").disabled = mode === "robot";
+        document.querySelector("#class-2").disabled = mode === "robot";
+        commanderTwo.querySelector(".army-controls").style.opacity = mode === "robot" ? ".6" : "1";
+      }
+
+      function fighterMarkup(fighter, index) {
+        const hpPercent = Math.max(0, fighter.hp / fighter.maxHp * 100);
+        return `<h2>${fighter.name}</h2><div>Knight HP: <strong>${Math.ceil(fighter.hp)} / ${fighter.maxHp}</strong></div><div class="bar"><span style="width:${hpPercent}%"></span></div><div class="army-list">🏰 Castle defense: <strong>${Math.ceil(fighter.castle)}%</strong><br>⚔️ Swordsmen: ${fighter.units.swords}<br>🏹 Archers: ${fighter.units.archers}<br>🐎 Cavalry: ${fighter.units.cavalry}<br><strong>Army power: ${armyPower(fighter)}</strong></div>`;
+      }
+
+      function armyPower(fighter) { return Object.entries(fighter.units).reduce((sum, [unit, count]) => sum + UNIT_POWER[unit] * count, 0); }
+
+      function counterAdvantage(attacker, defender) {
+        return Object.entries(COUNTERS).reduce((score, [unit, counteredUnit]) => {
+          return score + attacker.units[unit] * defender.units[counteredUnit] - defender.units[unit] * attacker.units[counteredUnit];
+        }, 0);
+      }
+
+      function removeUnits(fighter, preferredUnit, losses) {
+        const order = [preferredUnit, ...Object.keys(UNIT_NAMES).filter(unit => unit !== preferredUnit)];
+        let remaining = losses;
+        order.forEach(unit => {
+          const removed = Math.min(fighter.units[unit], remaining);
+          fighter.units[unit] -= removed;
+          remaining -= removed;
+        });
+      }
+
+      function syncFighterUnits() {
+        fighters.forEach((fighter, owner) => {
+          fighter.units = Object.keys(UNIT_NAMES).reduce((units, type) => {
+            units[type] = soldiers.filter(soldier => soldier.owner === owner && soldier.type === type).length;
+            return units;
+          }, {});
+        });
+      }
+
+      function distanceBetween(row1, col1, row2, col2) {
+        return Math.abs(row1 - row2) + Math.abs(col1 - col2);
+      }
+
+      function soldierAt(row, col) {
+        return soldiers.find(soldier => soldier.row === row && soldier.col === col);
+      }
+
+      function castleAt(row, col) {
+        if (row !== 7) return -1;
+        if (col === 0) return 0;
+        if (col === BOARD_COLS - 1) return 1;
+        return -1;
+      }
+
+      function renderBoard() {
+        const board = document.querySelector("#board");
+        if (!board || !fighters) return;
+        board.innerHTML = "";
+        for (let row = 0; row < BOARD_ROWS; row += 1) {
+          for (let col = 0; col < BOARD_COLS; col += 1) {
+            const cell = document.createElement("button");
+            const soldier = soldierAt(row, col);
+            const castleOwner = castleAt(row, col);
+            cell.className = "cell";
+            cell.type = "button";
+            cell.setAttribute("role", "gridcell");
+            cell.dataset.row = String(row);
+            cell.dataset.col = String(col);
+            if (castleOwner >= 0) {
+              cell.classList.add(`castle-${castleOwner + 1}`);
+              cell.textContent = "🏰";
+              cell.title = `${fighters[castleOwner].name}'s castle: ${Math.ceil(fighters[castleOwner].castle)}%`;
+            }
+            if (soldier) {
+              cell.classList.add(`own-${soldier.owner + 1}`);
+              if (soldier.moved && soldier.owner === activePlayer) cell.classList.add("moved");
+              if (selectedSoldier && selectedSoldier.id === soldier.id) cell.classList.add("selected");
+              cell.innerHTML = `${UNIT_STATS[soldier.type].icon}<span class="unit-health">${Math.ceil(soldier.health)}</span>`;
+              cell.title = `${UNIT_NAMES[soldier.type]} — ${Math.ceil(soldier.health)} HP${soldier.moved ? " — moved" : ""}${soldier.attacked ? " — attacked" : ""}`;
+            }
+            if (selectedSoldier && !selectedSoldier.attacked && ((soldier && soldier.owner !== activePlayer) || castleOwner === 1 - activePlayer) && canAttack(selectedSoldier, row, col)) cell.classList.add("valid");
+            if (selectedSoldier && !selectedSoldier.moved && !soldier && castleOwner < 0 && distanceBetween(selectedSoldier.row, selectedSoldier.col, row, col) <= UNIT_STATS[selectedSoldier.type].move) cell.classList.add("valid");
+            cell.addEventListener("click", () => handleBoardClick(row, col));
+            board.append(cell);
+          }
+        }
+      }
+
+      function canAttack(attacker, targetRow, targetCol) {
+        return !attacker.attacked && distanceBetween(attacker.row, attacker.col, targetRow, targetCol) <= UNIT_STATS[attacker.type].range;
+      }
+
+      function applyAttack(attacker, defender) {
+        const attackerStats = UNIT_STATS[attacker.type];
+        const defenderStats = UNIT_STATS[defender.type];
+        const multiplier = COUNTERS[attacker.type] === defender.type ? 1.25 : COUNTERS[defender.type] === attacker.type ? .8 : 1;
+        const damage = Math.round(attackerStats.attack * multiplier);
+        defender.health -= damage;
+        attacker.attacked = true;
+        log(`${UNIT_NAMES[attacker.type]} attack for ${damage} damage${defender.health <= 0 ? " and destroy a unit" : ""}.`);
+        if (defender.health <= 0) soldiers = soldiers.filter(soldier => soldier.id !== defender.id);
+      }
+
+      function attackCastle(attacker, owner) {
+        const damage = UNIT_STATS[attacker.type].attack;
+        fighters[owner].castle = Math.max(0, fighters[owner].castle - damage);
+        attacker.attacked = true;
+        log(`${UNIT_NAMES[attacker.type]} hit the enemy castle for ${damage} damage.`);
+      }
+
+      function checkVictory() {
+        syncFighterUnits();
+        const defeatedOwner = fighters.findIndex((fighter, owner) => fighter.castle <= 0 || soldiers.every(soldier => soldier.owner !== owner));
+        if (defeatedOwner < 0) return false;
+        finishBattle(fighters[1 - defeatedOwner]);
+        return true;
+      }
+
+      function handleBoardClick(row, col) {
+        if (battleOver || (mode === "robot" && activePlayer === 1)) return;
+        const clickedSoldier = soldierAt(row, col);
+        const clickedCastleOwner = castleAt(row, col);
+        if (!selectedSoldier) {
+          if (clickedSoldier && clickedSoldier.owner === activePlayer) {
+            selectedSoldier = clickedSoldier;
+            document.querySelector("#battle-status").textContent = `${UNIT_NAMES[clickedSoldier.type]} selected.`;
+            renderBoard();
+          }
+          return;
+        }
+        if (clickedSoldier && clickedSoldier.owner === activePlayer) {
+          selectedSoldier = clickedSoldier;
+          renderBoard();
+          return;
+        }
+        if (clickedSoldier && clickedSoldier.owner !== activePlayer) {
+          if (canAttack(selectedSoldier, row, col)) {
+            applyAttack(selectedSoldier, clickedSoldier);
+            selectedSoldier = null;
+            if (!checkVictory()) {
+              document.querySelector("#battle-status").textContent = "Attack complete. Select another soldier or end the turn.";
+              renderBattle();
+            }
+          } else {
+            document.querySelector("#battle-status").textContent = "That enemy is out of range.";
+          }
+          return;
+        }
+        if (clickedCastleOwner === 1 - activePlayer) {
+          if (canAttack(selectedSoldier, row, col)) {
+            attackCastle(selectedSoldier, clickedCastleOwner);
+            selectedSoldier = null;
+            if (!checkVictory()) renderBattle();
+          } else {
+            document.querySelector("#battle-status").textContent = "That castle is out of range.";
+          }
+          return;
+        }
+        if (!selectedSoldier.moved && !clickedSoldier && clickedCastleOwner < 0 && distanceBetween(selectedSoldier.row, selectedSoldier.col, row, col) <= UNIT_STATS[selectedSoldier.type].move) {
+          selectedSoldier.row = row;
+          selectedSoldier.col = col;
+          selectedSoldier.moved = true;
+          document.querySelector("#battle-status").textContent = `${UNIT_NAMES[selectedSoldier.type]} moved.`;
+          renderBoard();
+          return;
+        }
+        document.querySelector("#battle-status").textContent = "Choose an empty space within movement range or a target in attack range.";
+      }
+
+      function resetTurn(owner) {
+        soldiers.forEach(soldier => {
+          if (soldier.owner === owner) {
+            soldier.moved = false;
+            soldier.attacked = false;
+          }
+        });
+      }
+
+      function endTurn() {
+        if (battleOver || (mode === "robot" && activePlayer === 1)) return;
+        selectedSoldier = null;
+        activePlayer = 1 - activePlayer;
+        resetTurn(activePlayer);
+        document.querySelector("#battle-status").textContent = `${fighters[activePlayer].name}'s turn.`;
+        renderBattle();
+        if (mode === "robot") robotTimer = setTimeout(robotGridTurn, 500);
+      }
+
+      function createSoldiers(owner, units) {
+        const created = [];
+        let index = 0;
+        Object.entries(units).forEach(([type, count]) => {
+          for (let unit = 0; unit < count; unit += 1) {
+            created.push({ id: `${owner}-${index}`, owner, type, row: index % BOARD_ROWS, col: owner === 0 ? 1 + Math.floor(index / BOARD_ROWS) : BOARD_COLS - 2 - Math.floor(index / BOARD_ROWS), health: UNIT_STATS[type].health, moved: false, attacked: false });
+            index += 1;
+          }
+        });
+        return created;
+      }
+
+      function robotGridTurn() {
+        if (battleOver) return;
+        const robotSoldiers = soldiers.filter(soldier => soldier.owner === 1);
+        robotSoldiers.forEach(robot => {
+          if (battleOver || !soldiers.includes(robot)) return;
+          const targets = soldiers.filter(soldier => soldier.owner === 0).sort((a, b) => distanceBetween(robot.row, robot.col, a.row, a.col) - distanceBetween(robot.row, robot.col, b.row, b.col));
+          const target = targets[0];
+          if (!target) {
+            if (canAttack(robot, 9, 0)) attackCastle(robot, 0);
+            return;
+          }
+          const enemyInRange = targets.find(enemy => canAttack(robot, enemy.row, enemy.col));
+          if (enemyInRange) {
+            applyAttack(robot, enemyInRange);
+            return;
+          }
+          if (!robot.moved) {
+            const rowStep = Math.sign(target.row - robot.row);
+            const colStep = Math.sign(target.col - robot.col);
+            const options = [
+              [robot.row + rowStep, robot.col],
+              [robot.row, robot.col + colStep],
+              [robot.row + rowStep, robot.col + colStep]
+            ];
+            const destination = options.find(([row, col]) => row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS && !soldierAt(row, col) && castleAt(row, col) < 0 && distanceBetween(robot.row, robot.col, row, col) <= UNIT_STATS[robot.type].move);
+            if (destination) {
+              robot.row = destination[0];
+              robot.col = destination[1];
+              robot.moved = true;
+            }
+            const movedTarget = soldiers.find(soldier => soldier.owner === 0 && canAttack(robot, soldier.row, soldier.col));
+            if (movedTarget) applyAttack(robot, movedTarget);
+          }
+        });
+        if (checkVictory()) return;
+        activePlayer = 0;
+        resetTurn(0);
+        document.querySelector("#battle-status").textContent = `${fighters[0].name}'s turn.`;
+        renderBattle();
+      }
+
+      function renderVisualBattle() {
+        const knightIcons = { guardian: "🛡️", ranger: "🏹", berserker: "⚔️" };
+        const unitIcons = { swords: "🗡️", archers: "🏹", cavalry: "🐎" };
+        fighters.forEach((fighter, index) => {
+          const unitIconsForArmy = Object.entries(fighter.units).map(([unit, count]) => unitIcons[unit].repeat(Math.min(count, 7))).join(" ");
+          const castlePercent = Math.max(0, fighter.castle);
+          document.querySelector(`#visual-${index + 1}`).innerHTML = `<div class="visual-name">${fighter.name}</div><div class="castle-mini"><span>🏰</span><span class="castle-label">Castle ${Math.ceil(castlePercent)}%</span><div class="castle-bar"><span style="width:${castlePercent}%"></span></div></div><div class="knight-avatar">${knightIcons[fighter.class]}</div><div class="unit-count" aria-label="${armyPower(fighter)} army power">${unitIconsForArmy || "—"}</div>`;
+          document.querySelector(`#visual-${index + 1}`).classList.toggle("guarding", fighter.guarding);
+        });
+      }
+
+      function renderBattle() {
+        syncFighterUnits();
+        document.querySelector("#fighter-1").innerHTML = fighterMarkup(fighters[0], 0);
+        document.querySelector("#fighter-2").innerHTML = fighterMarkup(fighters[1], 1);
+        document.querySelector("#fighter-1").classList.toggle("active", activePlayer === 0 && !battleOver);
+        document.querySelector("#fighter-2").classList.toggle("active", activePlayer === 1 && !battleOver);
+        document.querySelector("#end-turn").disabled = battleOver || (mode === "robot" && activePlayer === 1);
+        document.querySelector("#turn-status").innerHTML = battleOver ? "Battle complete." : `<strong>${fighters[activePlayer].name}'s turn</strong> — move and attack with each soldier, then end the turn.`;
+        renderBoard();
+      }
+
+      function battleEffect(attackerIndex, action) {
+        const attackerVisual = document.querySelector(`#visual-${attackerIndex + 1}`);
+        const defenderVisual = document.querySelector(`#visual-${2 - attackerIndex}`);
+        attackerVisual.classList.remove("attacking");
+        defenderVisual.classList.remove("hit");
+        void attackerVisual.offsetWidth;
+        if (action === "attack") {
+          attackerVisual.classList.add("attacking");
+          defenderVisual.classList.add("hit");
+        }
+        const effect = document.createElement("span");
+        effect.className = "battle-effect";
+        effect.textContent = action === "attack" ? "💥" : action === "rally" ? "✨" : "🛡️";
+        document.querySelector("#battlefield").append(effect);
+        setTimeout(() => effect.remove(), 600);
+      }
+
+      function log(message) {
+        const item = document.createElement("li");
+        item.textContent = message;
+        document.querySelector("#battle-log").prepend(item);
+      }
+
+      function finishBattle(winner) {
+        battleOver = true;
+        clearTimeout(robotTimer);
+        document.querySelector("#battle-status").textContent = `${winner.name} wins the battlefield!`;
+        log(`🏆 ${winner.name} has won by taking the castle or destroying the entire enemy army.`);
+        renderBattle();
+      }
+
+      function takeTurn(action) {
+        if (battleOver || (mode === "robot" && activePlayer === 1)) return;
+        const attackerIndex = activePlayer;
+        const attacker = fighters[activePlayer];
+        const defender = fighters[1 - activePlayer];
+        if (action === "attack") {
+          const advantage = counterAdvantage(attacker, defender);
+          let damage = armyPower(attacker) * .22 + CLASS_INFO[attacker.class].power + advantage * .08;
+          if (attacker.class === "ranger") damage *= 1.15;
+          if (attacker.class === "berserker") damage *= 1.1;
+          if (defender.guarding) damage *= .55;
+          defender.hp = Math.max(0, defender.hp - damage);
+          defender.castle = Math.max(0, defender.castle - damage * .2);
+          const losses = Math.max(1, Math.round(damage / 10));
+          const target = Object.keys(UNIT_NAMES).sort((a, b) => defender.units[b] - defender.units[a])[0];
+          removeUnits(defender, target, losses);
+          defender.guarding = false;
+          log(`${attacker.name} clashes for ${Math.round(damage)} damage and scatters ${losses} ${UNIT_NAMES[target]}.`);
+        } else if (action === "volley") {
+          const advantage = attacker.units.archers * (defender.units.swords + 1);
+          const damage = 8 + attacker.units.archers * 1.7 + advantage * .04;
+          defender.hp = Math.max(0, defender.hp - damage);
+          defender.castle = Math.max(0, defender.castle - damage * .12);
+          const losses = Math.max(1, Math.round(attacker.units.archers / 3));
+          removeUnits(defender, "swords", losses);
+          defender.guarding = false;
+          log(`${attacker.name}'s archers fire a Volley for ${Math.round(damage)} damage and hit ${losses} Swordsmen.`);
+        } else if (action === "flank") {
+          const advantage = attacker.units.cavalry * (defender.units.archers + 1);
+          const damage = 10 + attacker.units.cavalry * 1.5 + advantage * .05;
+          defender.hp = Math.max(0, defender.hp - damage);
+          defender.castle = Math.max(0, defender.castle - damage * .16);
+          const losses = Math.max(1, Math.round(attacker.units.cavalry / 3));
+          removeUnits(defender, "archers", losses);
+          defender.guarding = false;
+          log(`${attacker.name}'s cavalry Flank for ${Math.round(damage)} damage and trample ${losses} Archers.`);
+        } else if (action === "rally") {
+          const unit = Object.keys(attacker.units).sort((a, b) => attacker.units[b] - attacker.units[a])[0];
+          attacker.units[unit] += 1;
+          attacker.hp = Math.min(attacker.maxHp, attacker.hp + 4);
+          attacker.castle = Math.min(100, attacker.castle + 5);
+          log(`${attacker.name} rallies the ${UNIT_NAMES[unit]} and restores 4 knight HP.`);
+        } else {
+          attacker.guarding = true;
+          attacker.castle = Math.min(100, attacker.castle + 8);
+          log(`${attacker.name} raises a shield. The next attack deals half damage.`);
+        }
+        if (defender.castle <= 0 || armyTotal(defender.units) <= 0) {
+          finishBattle(attacker);
+          battleEffect(attackerIndex, action);
+          return;
+        }
+        activePlayer = 1 - activePlayer;
+        document.querySelector("#battle-status").textContent = `${fighters[activePlayer].name}'s turn.`;
+        renderBattle();
+        battleEffect(attackerIndex, action);
+        if (mode === "robot" && activePlayer === 1) robotTimer = setTimeout(robotTurn, 700);
+      }
+
+      function robotTurn() {
+        if (battleOver) return;
+        const robot = fighters[1];
+        const player = fighters[0];
+        const action = robot.hp < robot.maxHp * .35 && Math.random() < .35 ? "rally" : robot.units.archers >= 2 && Math.random() < .3 ? "volley" : robot.units.cavalry >= 2 && Math.random() < .3 ? "flank" : player.hp < robot.hp * .55 ? "attack" : Math.random() < .25 ? "guard" : "attack";
+        takeTurn(action);
+      }
+
+      function startBattle() {
+        clearTimeout(robotTimer);
+        if (mode === "robot") {
+          players[1].name.value = "Iron Bot";
+          players[1].class.value = ["guardian", "ranger", "berserker"][Math.floor(Math.random() * 3)];
+          players[1].units = { swords: 20, archers: 15, cavalry: 15 };
+        }
+        fighters = players.map(player => ({ name: player.name.value.trim() || "Nameless Knight", class: player.class.value, units: { ...player.units }, castle: 100, maxHp: CLASS_INFO[player.class.value].hp, hp: CLASS_INFO[player.class.value].hp, guarding: false }));
+        soldiers = [...createSoldiers(0, fighters[0].units), ...createSoldiers(1, fighters[1].units)];
+        selectedSoldier = null;
+        activePlayer = 0;
+        battleOver = false;
+        setup.hidden = true;
+        battle.hidden = false;
+        document.querySelector("#battle-log").innerHTML = "";
+        document.querySelector("#battle-status").textContent = `${fighters[0].name}'s turn.`;
+        log(`${fighters[0].name} and ${fighters[1].name} enter the battlefield!`);
+        renderBattle();
+      }
+
+      modeButtons.forEach(button => button.addEventListener("click", () => setMode(button.dataset.mode)));
+      players.forEach((player, index) => {
+        player.class.addEventListener("change", () => renderClassInfo(index));
+        renderArmyControls(index);
+        renderClassInfo(index);
+      });
+      document.querySelector("#start-battle").addEventListener("click", startBattle);
+      document.querySelector("#end-turn").addEventListener("click", endTurn);
+      document.querySelectorAll(".action[data-action]").forEach(button => button.addEventListener("click", () => takeTurn(button.dataset.action)));
+      document.querySelector("#new-battle").addEventListener("click", () => { battle.hidden = true; setup.hidden = false; });
+      setMode("robot");
+    </script>
+  </body>
+</html>

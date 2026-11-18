@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meteor Dodge | My Online Game</title>
+    <style>
+      :root { color-scheme: dark; font-family: Arial, sans-serif; }
+      * { box-sizing: border-box; }
+      body { background: radial-gradient(circle at top, #482566, #10172b 70%); color: #f8fbff; margin: 0; min-height: 100vh; }
+      main { margin: auto; max-width: 620px; padding: 28px 18px 42px; text-align: center; }
+      a { color: #ffcf3f; }
+      .panel { background: #141f3ae8; border: 1px solid #ffffff2e; border-radius: 18px; padding: 20px; }
+      button { background: #ffcf3f; border: 0; border-radius: 10px; color: #17203b; cursor: pointer; font: inherit; font-weight: bold; padding: 11px 17px; }
+      button:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+      .stats { display: flex; justify-content: space-around; margin: 16px 0; }
+      .stats strong { color: #ffcf3f; display: block; font-size: 1.5rem; }
+      #arena { background: linear-gradient(#1d3155, #10172b); border: 3px solid #829bd1; border-radius: 14px; height: min(68vh, 430px); margin: 0 auto; max-width: 390px; overflow: hidden; position: relative; }
+      #ship { bottom: 18px; font-size: 2.8rem; left: 50%; line-height: 1; position: absolute; transform: translateX(-50%); transition: left 90ms linear; }
+      .meteor { font-size: 1.8rem; line-height: 1; position: absolute; top: -40px; }
+      #status { color: #c8d5f0; min-height: 1.5em; }
+      .controls { color: #c8d5f0; margin: 14px 0; }
+      .touch-controls { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
+      .touch-controls button { font-size: 1.5rem; min-width: 76px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="index.html">← Back to games</a>
+      <h1>Meteor Dodge</h1>
+      <p class="controls">Move with <strong>←</strong> <strong>→</strong> or the buttons. Dodge meteors and survive as long as you can.</p>
+      <section class="panel" aria-label="Meteor Dodge game">
+        <button id="start" type="button">Start game</button>
+        <div class="stats">
+          <div>Score<strong id="score">0</strong></div>
+          <div>Best<strong id="best">0</strong></div>
+        </div>
+        <div id="arena" aria-label="Meteor Dodge play area">
+          <div id="ship" aria-label="Your spaceship">🚀</div>
+        </div>
+        <p id="status" role="status">Press Start game to begin.</p>
+        <div class="touch-controls">
+          <button id="left" type="button" aria-label="Move left">←</button>
+          <button id="right" type="button" aria-label="Move right">→</button>
+        </div>
+      </section>
+    </main>
+    <script>
+      const arena = document.querySelector("#arena");
+      const ship = document.querySelector("#ship");
+      const scoreEl = document.querySelector("#score");
+      const bestEl = document.querySelector("#best");
+      const status = document.querySelector("#status");
+      const start = document.querySelector("#start");
+      const bestKey = "meteor-dodge-best";
+      let shipX = 50;
+      let score = 0;
+      let running = false;
+      let lastFrame = 0;
+      let spawnTimer = 0;
+      let gameTime = 0;
+      let animationFrame;
+
+      bestEl.textContent = localStorage.getItem(bestKey) || "0";
+
+      function move(direction) {
+        if (!running) return;
+        shipX = Math.max(8, Math.min(92, shipX + direction * 7));
+        ship.style.left = `${shipX}%`;
+      }
+
+      function spawnMeteor() {
+        const meteor = document.createElement("span");
+        meteor.className = "meteor";
+        meteor.textContent = "☄️";
+        meteor.dataset.x = String(8 + Math.random() * 84);
+        meteor.dataset.speed = String(120 + score * 3 + Math.random() * 80);
+        meteor.style.left = `${meteor.dataset.x}%`;
+        arena.append(meteor);
+      }
+
+      function hit(meteor) {
+        const meteorRect = meteor.getBoundingClientRect();
+        const shipRect = ship.getBoundingClientRect();
+        return meteorRect.bottom > shipRect.top + 10
+          && meteorRect.top < shipRect.bottom
+          && meteorRect.right > shipRect.left + 8
+          && meteorRect.left < shipRect.right - 8;
+      }
+
+      function endGame() {
+        running = false;
+        cancelAnimationFrame(animationFrame);
+        document.querySelectorAll(".meteor").forEach(meteor => meteor.remove());
+        const best = Math.max(score, Number(localStorage.getItem(bestKey) || 0));
+        localStorage.setItem(bestKey, String(best));
+        bestEl.textContent = String(best);
+        start.textContent = "Play again";
+        status.textContent = `Boom! You survived for ${score} points.`;
+      }
+
+      function frame(time) {
+        if (!running) return;
+        const delta = Math.min((time - lastFrame) / 1000, 0.05);
+        lastFrame = time;
+        gameTime += delta;
+        spawnTimer += delta;
+        if (spawnTimer > Math.max(0.28, 0.85 - score / 180)) {
+          spawnMeteor();
+          spawnTimer = 0;
+        }
+        document.querySelectorAll(".meteor").forEach(meteor => {
+          const speed = Math.min(620, Number(meteor.dataset.speed) + (24 + gameTime * 0.5) * delta);
+          meteor.dataset.speed = String(speed);
+          meteor.style.top = `${meteor.offsetTop + speed * delta}px`;
+          if (hit(meteor)) endGame();
+          if (meteor.offsetTop > arena.clientHeight) {
+            meteor.remove();
+            score += 1;
+            scoreEl.textContent = String(score);
+          }
+        });
+        animationFrame = requestAnimationFrame(frame);
+      }
+
+      function startGame() {
+        document.querySelectorAll(".meteor").forEach(meteor => meteor.remove());
+        shipX = 50;
+        score = 0;
+        running = true;
+        spawnTimer = 0;
+        gameTime = 0;
+        scoreEl.textContent = "0";
+        ship.style.left = "50%";
+        start.textContent = "Restart game";
+        status.textContent = "Stay sharp!";
+        lastFrame = performance.now();
+        animationFrame = requestAnimationFrame(frame);
+      }
+
+      start.addEventListener("click", startGame);
+      document.addEventListener("keydown", event => {
+        if (event.key === "ArrowLeft" || event.key.toLowerCase() === "a") {
+          event.preventDefault();
+          move(-1);
+        } else if (event.key === "ArrowRight" || event.key.toLowerCase() === "d") {
+          event.preventDefault();
+          move(1);
+        }
+      });
+      document.querySelector("#left").addEventListener("click", () => move(-1));
+      document.querySelector("#right").addEventListener("click", () => move(1));
+    </script>
+  </body>
+</html>
