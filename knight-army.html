@@ -66,9 +66,10 @@
       .action { min-width:125px; padding:11px 15px; }
       .action:disabled { cursor:not-allowed; opacity:.45; }
       .board-wrap { background:#0b1428; border:2px solid #6c86ad; border-radius:14px; margin:18px auto 0; max-width:900px; overflow:auto; padding:8px; }
-      .board { display:grid; gap:1px; grid-template-columns:repeat(20, minmax(22px, 1fr)); margin:auto; min-width:520px; width:100%; }
+      .board { display:grid; gap:1px; grid-template-columns:repeat(15, minmax(22px, 1fr)); margin:auto; min-width:420px; width:100%; }
       .cell { align-items:center; background:#496b4d; border:0; color:#fff; cursor:pointer; display:flex; font-size:1rem; height:28px; justify-content:center; padding:0; position:relative; }
-      .cell:nth-child(-n+20), .cell:nth-last-child(-n+20) { background:#3e6047; }
+      .cell:nth-child(-n+15), .cell:nth-last-child(-n+15) { background:#3e6047; }
+      .cell.ocean { background:#247fa4; cursor:not-allowed; }
       .cell:hover, .cell:focus-visible { outline:2px solid #fff; outline-offset:-2px; z-index:2; }
       .cell.valid { box-shadow:inset 0 0 0 2px #8ce2d2; }
       .cell.castle-1, .cell.castle-2 { background:#6b563d; font-size:1.1rem; }
@@ -104,7 +105,7 @@
             <label>Knight class<select id="class-1"><option value="guardian">Guardian</option><option value="ranger">Ranger</option><option value="berserker">Berserker</option></select></label>
             <p id="class-info-1" class="class-info"></p>
             <div class="army-controls" data-player="1"></div>
-            <p class="total">Army size: <strong id="total-1">50</strong> / 50</p>
+            <p class="total">Coins left: <strong id="total-1">50</strong> / 50</p>
           </article>
           <article id="commander-2" class="commander">
             <h2 id="player-2-title">Robot Commander</h2>
@@ -112,10 +113,10 @@
             <label>Knight class<select id="class-2"><option value="guardian">Guardian</option><option value="ranger">Ranger</option><option value="berserker">Berserker</option></select></label>
             <p id="class-info-2" class="class-info"></p>
             <div class="army-controls" data-player="2"></div>
-            <p class="total">Army size: <strong id="total-2">50</strong> / 50</p>
+            <p class="total">Coins left: <strong id="total-2">50</strong> / 50</p>
           </article>
         </div>
-        <p class="hint">Each commander gets 50 units. Balance swordsmen, archers, and cavalry to create your strategy.</p>
+        <p class="hint">Each commander gets 50 coins. Swordsmen cost 2, Archers cost 3, and Cavalry cost 4 coins.</p>
         <div class="center"><button id="start-battle" type="button">Start battle</button></div>
       </section>
 
@@ -125,11 +126,11 @@
           <div class="versus">VS</div>
           <article id="fighter-2" class="fighter"></article>
         </div>
-        <div class="board-wrap"><div id="board" class="board" role="grid" aria-label="15 by 20 tactical battlefield"></div></div>
-        <p id="board-help" class="board-help">Select one of your soldiers, then click a highlighted space to move or an enemy in range to attack.</p>
+        <div class="board-wrap"><div id="board" class="board" role="grid" aria-label="15 by 15 tactical battlefield"></div></div>
+        <p id="board-help" class="board-help">Select one of your soldiers, then choose one action: move or attack. A soldier cannot do both in the same turn. The central 3×3 ocean cannot be crossed.</p>
         <div class="turn-controls"><span id="turn-status"></span><button id="end-turn" class="action" type="button">End turn</button></div>
         <p id="battle-status" role="status"></p>
-        <p class="strategy-note"><strong>Rules:</strong> Swordsmen and Archers move 1 space; Cavalry move up to 2. Swordsmen and Cavalry attack adjacent targets; Archers attack up to 2 spaces away. Every soldier can move and attack once per turn. Destroy the enemy castle or wipe out the entire army.</p>
+        <p class="strategy-note"><strong>Rules:</strong> Swordsmen and Archers move 1 space; Cavalry move up to 2. Swordsmen and Cavalry attack adjacent targets; Archers attack up to 2 spaces away. Each soldier must choose to move or attack once per turn, not both. The central 3×3 ocean blocks movement. Destroy the enemy castle or wipe out the entire army.</p>
         <ul id="battle-log" aria-label="Battle log"></ul>
         <div class="center"><button id="new-battle" class="action" type="button">Build new army</button></div>
       </section>
@@ -143,9 +144,10 @@
       };
       const UNIT_POWER = { swords: 3, archers: 4, cavalry: 5 };
       const COUNTERS = { swords: "cavalry", archers: "swords", cavalry: "archers" };
-      const ARMY_LIMIT = 50;
+      const COIN_LIMIT = 50;
+      const UNIT_COST = { swords: 2, archers: 3, cavalry: 4 };
       const BOARD_ROWS = 15;
-      const BOARD_COLS = 20;
+      const BOARD_COLS = 15;
       const UNIT_STATS = {
         swords: { attack: 10, health: 22, move: 1, range: 1, icon: "⚔️" },
         archers: { attack: 7, health: 20, move: 1, range: 2, icon: "🏹" },
@@ -156,8 +158,8 @@
       const commanderTwo = document.querySelector("#commander-2");
       const modeButtons = document.querySelectorAll(".mode");
       const players = [
-        { name: document.querySelector("#name-1"), class: document.querySelector("#class-1"), info: document.querySelector("#class-info-1"), total: document.querySelector("#total-1"), units: { swords: 20, archers: 15, cavalry: 15 } },
-        { name: document.querySelector("#name-2"), class: document.querySelector("#class-2"), info: document.querySelector("#class-info-2"), total: document.querySelector("#total-2"), units: { swords: 20, archers: 15, cavalry: 15 } }
+        { name: document.querySelector("#name-1"), class: document.querySelector("#class-1"), info: document.querySelector("#class-info-1"), total: document.querySelector("#total-1"), units: { swords: 10, archers: 6, cavalry: 3 } },
+        { name: document.querySelector("#name-2"), class: document.querySelector("#class-2"), info: document.querySelector("#class-info-2"), total: document.querySelector("#total-2"), units: { swords: 10, archers: 6, cavalry: 3 } }
       ];
       let mode = "robot";
       let fighters;
@@ -168,6 +170,7 @@
       let selectedSoldier = null;
 
       function armyTotal(units) { return Object.values(units).reduce((sum, count) => sum + count, 0); }
+      function armyCost(units) { return Object.entries(units).reduce((sum, [unit, count]) => sum + UNIT_COST[unit] * count, 0); }
 
       function renderArmyControls(playerIndex) {
         const player = players[playerIndex];
@@ -176,17 +179,17 @@
         Object.keys(UNIT_NAMES).forEach(unit => {
           const row = document.createElement("div");
           row.className = "army-row";
-          row.innerHTML = `<span>${UNIT_NAMES[unit]}</span><button type="button" data-unit="${unit}" data-change="-1" aria-label="Remove ${UNIT_NAMES[unit]}">−</button><strong class="army-count">${player.units[unit]}</strong><button type="button" data-unit="${unit}" data-change="1" aria-label="Add ${UNIT_NAMES[unit]}">+</button>`;
+          row.innerHTML = `<span>${UNIT_NAMES[unit]} <small>(${UNIT_COST[unit]} coins)</small></span><button type="button" data-unit="${unit}" data-change="-1" aria-label="Remove ${UNIT_NAMES[unit]}">−</button><strong class="army-count">${player.units[unit]}</strong><button type="button" data-unit="${unit}" data-change="1" aria-label="Add ${UNIT_NAMES[unit]}">+</button>`;
           row.querySelectorAll("button").forEach(button => button.addEventListener("click", () => {
             const change = Number(button.dataset.change);
-            if (change > 0 && armyTotal(player.units) >= ARMY_LIMIT) return;
+            if (change > 0 && armyCost(player.units) + UNIT_COST[unit] > COIN_LIMIT) return;
             if (change < 0 && player.units[unit] <= 0) return;
             player.units[unit] += change;
             renderArmyControls(playerIndex);
           }));
           container.append(row);
         });
-        player.total.textContent = String(armyTotal(player.units));
+        player.total.textContent = String(armyCost(player.units));
       }
 
       function renderClassInfo(playerIndex) {
@@ -238,6 +241,20 @@
         return Math.abs(row1 - row2) + Math.abs(col1 - col2);
       }
 
+      function isOcean(row, col) {
+        return row >= 6 && row <= 8 && col >= 6 && col <= 8;
+      }
+
+      function canMoveTo(soldier, targetRow, targetCol) {
+        const rowStep = Math.sign(targetRow - soldier.row);
+        const colStep = Math.sign(targetCol - soldier.col);
+        if (isOcean(targetRow, targetCol) || distanceBetween(soldier.row, soldier.col, targetRow, targetCol) > UNIT_STATS[soldier.type].move) return false;
+        const paths = [];
+        if (rowStep !== 0) paths.push([soldier.row + rowStep, soldier.col]);
+        if (colStep !== 0) paths.push([soldier.row, soldier.col + colStep]);
+        return paths.some(([row, col]) => !isOcean(row, col)) || paths.length === 0;
+      }
+
       function soldierAt(row, col) {
         return soldiers.find(soldier => soldier.row === row && soldier.col === col);
       }
@@ -263,6 +280,11 @@
             cell.setAttribute("role", "gridcell");
             cell.dataset.row = String(row);
             cell.dataset.col = String(col);
+            if (isOcean(row, col)) {
+              cell.classList.add("ocean");
+              cell.textContent = "🌊";
+              cell.title = "Ocean — cannot be crossed";
+            }
             if (castleOwner >= 0) {
               cell.classList.add(`castle-${castleOwner + 1}`);
               cell.textContent = "🏰";
@@ -270,13 +292,13 @@
             }
             if (soldier) {
               cell.classList.add(`own-${soldier.owner + 1}`);
-              if (soldier.moved && soldier.owner === activePlayer) cell.classList.add("moved");
+              if (soldier.acted && soldier.owner === activePlayer) cell.classList.add("moved");
               if (selectedSoldier && selectedSoldier.id === soldier.id) cell.classList.add("selected");
               cell.innerHTML = `${UNIT_STATS[soldier.type].icon}<span class="unit-health">${Math.ceil(soldier.health)}</span>`;
-              cell.title = `${UNIT_NAMES[soldier.type]} — ${Math.ceil(soldier.health)} HP${soldier.moved ? " — moved" : ""}${soldier.attacked ? " — attacked" : ""}`;
+              cell.title = `${UNIT_NAMES[soldier.type]} — ${Math.ceil(soldier.health)} HP${soldier.acted ? " — acted this turn" : ""}`;
             }
-            if (selectedSoldier && !selectedSoldier.attacked && ((soldier && soldier.owner !== activePlayer) || castleOwner === 1 - activePlayer) && canAttack(selectedSoldier, row, col)) cell.classList.add("valid");
-            if (selectedSoldier && !selectedSoldier.moved && !soldier && castleOwner < 0 && distanceBetween(selectedSoldier.row, selectedSoldier.col, row, col) <= UNIT_STATS[selectedSoldier.type].move) cell.classList.add("valid");
+            if (selectedSoldier && !selectedSoldier.acted && ((soldier && soldier.owner !== activePlayer) || castleOwner === 1 - activePlayer) && canAttack(selectedSoldier, row, col)) cell.classList.add("valid");
+            if (selectedSoldier && !selectedSoldier.acted && !soldier && castleOwner < 0 && canMoveTo(selectedSoldier, row, col)) cell.classList.add("valid");
             cell.addEventListener("click", () => handleBoardClick(row, col));
             board.append(cell);
           }
@@ -284,7 +306,7 @@
       }
 
       function canAttack(attacker, targetRow, targetCol) {
-        return !attacker.attacked && distanceBetween(attacker.row, attacker.col, targetRow, targetCol) <= UNIT_STATS[attacker.type].range;
+        return !attacker.acted && distanceBetween(attacker.row, attacker.col, targetRow, targetCol) <= UNIT_STATS[attacker.type].range;
       }
 
       function applyAttack(attacker, defender) {
@@ -294,6 +316,7 @@
         const damage = Math.round(attackerStats.attack * multiplier);
         defender.health -= damage;
         attacker.attacked = true;
+        attacker.acted = true;
         log(`${UNIT_NAMES[attacker.type]} attack for ${damage} damage${defender.health <= 0 ? " and destroy a unit" : ""}.`);
         if (defender.health <= 0) soldiers = soldiers.filter(soldier => soldier.id !== defender.id);
       }
@@ -302,6 +325,7 @@
         const damage = UNIT_STATS[attacker.type].attack;
         fighters[owner].castle = Math.max(0, fighters[owner].castle - damage);
         attacker.attacked = true;
+        attacker.acted = true;
         log(`${UNIT_NAMES[attacker.type]} hit the enemy castle for ${damage} damage.`);
       }
 
@@ -318,7 +342,7 @@
         const clickedSoldier = soldierAt(row, col);
         const clickedCastleOwner = castleAt(row, col);
         if (!selectedSoldier) {
-          if (clickedSoldier && clickedSoldier.owner === activePlayer) {
+          if (clickedSoldier && clickedSoldier.owner === activePlayer && !clickedSoldier.acted) {
             selectedSoldier = clickedSoldier;
             document.querySelector("#battle-status").textContent = `${UNIT_NAMES[clickedSoldier.type]} selected.`;
             renderBoard();
@@ -326,7 +350,7 @@
           return;
         }
         if (clickedSoldier && clickedSoldier.owner === activePlayer) {
-          selectedSoldier = clickedSoldier;
+          if (!clickedSoldier.acted) selectedSoldier = clickedSoldier;
           renderBoard();
           return;
         }
@@ -353,10 +377,11 @@
           }
           return;
         }
-        if (!selectedSoldier.moved && !clickedSoldier && clickedCastleOwner < 0 && distanceBetween(selectedSoldier.row, selectedSoldier.col, row, col) <= UNIT_STATS[selectedSoldier.type].move) {
+        if (!selectedSoldier.acted && !clickedSoldier && clickedCastleOwner < 0 && canMoveTo(selectedSoldier, row, col)) {
           selectedSoldier.row = row;
           selectedSoldier.col = col;
           selectedSoldier.moved = true;
+          selectedSoldier.acted = true;
           document.querySelector("#battle-status").textContent = `${UNIT_NAMES[selectedSoldier.type]} moved.`;
           renderBoard();
           return;
@@ -369,6 +394,7 @@
           if (soldier.owner === owner) {
             soldier.moved = false;
             soldier.attacked = false;
+            soldier.acted = false;
           }
         });
       }
@@ -388,7 +414,7 @@
         let index = 0;
         Object.entries(units).forEach(([type, count]) => {
           for (let unit = 0; unit < count; unit += 1) {
-            created.push({ id: `${owner}-${index}`, owner, type, row: index % BOARD_ROWS, col: owner === 0 ? 1 + Math.floor(index / BOARD_ROWS) : BOARD_COLS - 2 - Math.floor(index / BOARD_ROWS), health: UNIT_STATS[type].health, moved: false, attacked: false });
+            created.push({ id: `${owner}-${index}`, owner, type, row: index % BOARD_ROWS, col: owner === 0 ? 1 + Math.floor(index / BOARD_ROWS) : BOARD_COLS - 2 - Math.floor(index / BOARD_ROWS), health: UNIT_STATS[type].health, moved: false, attacked: false, acted: false });
             index += 1;
           }
         });
@@ -411,7 +437,7 @@
             applyAttack(robot, enemyInRange);
             return;
           }
-          if (!robot.moved) {
+          if (!robot.acted) {
             const rowStep = Math.sign(target.row - robot.row);
             const colStep = Math.sign(target.col - robot.col);
             const options = [
@@ -419,14 +445,13 @@
               [robot.row, robot.col + colStep],
               [robot.row + rowStep, robot.col + colStep]
             ];
-            const destination = options.find(([row, col]) => row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS && !soldierAt(row, col) && castleAt(row, col) < 0 && distanceBetween(robot.row, robot.col, row, col) <= UNIT_STATS[robot.type].move);
+            const destination = options.find(([row, col]) => row >= 0 && row < BOARD_ROWS && col >= 0 && col < BOARD_COLS && !soldierAt(row, col) && castleAt(row, col) < 0 && canMoveTo(robot, row, col));
             if (destination) {
               robot.row = destination[0];
               robot.col = destination[1];
               robot.moved = true;
+              robot.acted = true;
             }
-            const movedTarget = soldiers.find(soldier => soldier.owner === 0 && canAttack(robot, soldier.row, soldier.col));
-            if (movedTarget) applyAttack(robot, movedTarget);
           }
         });
         if (checkVictory()) return;
@@ -454,7 +479,7 @@
         document.querySelector("#fighter-1").classList.toggle("active", activePlayer === 0 && !battleOver);
         document.querySelector("#fighter-2").classList.toggle("active", activePlayer === 1 && !battleOver);
         document.querySelector("#end-turn").disabled = battleOver || (mode === "robot" && activePlayer === 1);
-        document.querySelector("#turn-status").innerHTML = battleOver ? "Battle complete." : `<strong>${fighters[activePlayer].name}'s turn</strong> — move and attack with each soldier, then end the turn.`;
+        document.querySelector("#turn-status").innerHTML = battleOver ? "Battle complete." : `<strong>${fighters[activePlayer].name}'s turn</strong> — choose move or attack for each soldier, then end the turn.`;
         renderBoard();
       }
 
@@ -561,7 +586,7 @@
         if (mode === "robot") {
           players[1].name.value = "Iron Bot";
           players[1].class.value = ["guardian", "ranger", "berserker"][Math.floor(Math.random() * 3)];
-          players[1].units = { swords: 20, archers: 15, cavalry: 15 };
+          players[1].units = { swords: 10, archers: 6, cavalry: 3 };
         }
         fighters = players.map(player => ({ name: player.name.value.trim() || "Nameless Knight", class: player.class.value, units: { ...player.units }, castle: 100, maxHp: CLASS_INFO[player.class.value].hp, hp: CLASS_INFO[player.class.value].hp, guarding: false }));
         soldiers = [...createSoldiers(0, fighters[0].units), ...createSoldiers(1, fighters[1].units)];
