@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voxel Vista | My Online Game</title>
+    <style>
+      :root { color-scheme:dark; font-family:Arial,sans-serif; }
+      * { box-sizing:border-box; }
+      body { background:#111827; color:#f8fbff; margin:0; min-height:100vh; }
+      main { margin:auto; max-width:1100px; padding:22px 16px 42px; }
+      a { color:#ffcf3f; }
+      h1 { font-size:clamp(2.5rem,8vw,5rem); letter-spacing:-.08em; margin:14px 0 4px; text-align:center; }
+      .tagline { color:#c7d7ed; margin:0 auto 18px; text-align:center; }
+      .game-shell { background:#182438; border:1px solid #6a83a8; border-radius:18px; box-shadow:0 20px 55px #0008; overflow:hidden; position:relative; }
+      canvas { background:#7bc9ed; cursor:crosshair; display:block; height:auto; image-rendering:auto; width:100%; }
+      .hud { align-items:center; background:#0b1424e8; display:flex; flex-wrap:wrap; gap:12px; justify-content:space-between; padding:10px 14px; }
+      .hud strong { color:#ffe071; }
+      #inventory { color:#d5e4f7; }
+      .selected { border-bottom:3px solid #ffcf3f; color:#fff; padding-bottom:3px; }
+      .help { color:#c7d7ed; line-height:1.55; margin:16px auto 0; max-width:850px; text-align:center; }
+      kbd { background:#0a1424; border:1px solid #6e85aa; border-radius:4px; padding:2px 6px; }
+      button { background:#ffcf3f; border:0; border-radius:9px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:10px 16px; }
+      button:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      #start { display:block; margin:0 auto 14px; }
+      #status { color:#d5e4f7; min-height:1.5em; text-align:center; }
+      @media (max-width:680px) { .hud { justify-content:center; } main { padding-left:8px; padding-right:8px; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="index.html">← Back to games</a>
+      <h1>Voxel Vista</h1>
+      <p class="tagline">Explore an original block-built world in first person.</p>
+      <section class="game-shell" aria-label="Voxel Vista first-person block world">
+        <button id="start" type="button">Enter world</button>
+        <div class="hud">
+          <span>Selected: <strong id="selected">Grass</strong></span>
+          <span id="inventory">Grass 12 · Stone 8 · Wood 6</span>
+          <span>Position: <strong id="position">0, 1, 0</strong></span>
+        </div>
+        <canvas id="view" width="1000" height="560" aria-label="First-person voxel world"></canvas>
+        <p id="status" role="status">Choose a block with 1, 2, or 3, then enter the world.</p>
+      </section>
+      <p class="help">Click the view to capture the mouse, then move the mouse to look around. <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move · Hold <kbd>↓</kbd> to collect the block ahead · Press <kbd>Space</kbd> to place the selected block · <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> choose a block</p>
+    </main>
+    <script>
+      const canvas = document.querySelector("#view");
+      const ctx = canvas.getContext("2d");
+      const start = document.querySelector("#start");
+      const status = document.querySelector("#status");
+      const selectedLabel = document.querySelector("#selected");
+      const inventoryLabel = document.querySelector("#inventory");
+      const positionLabel = document.querySelector("#position");
+      const blockTypes = {
+        grass: { name: "Grass", color: "#5da84e", top: "#8bcf5b", side: "#39733d" },
+        stone: { name: "Stone", color: "#7d8793", top: "#aeb7c0", side: "#535e6c" },
+        wood: { name: "Wood", color: "#a86e3c", top: "#d49a58", side: "#684024" }
+      };
+      const inventory = { grass: 12, stone: 8, wood: 6 };
+      const world = new Map();
+      const dugGround = new Set();
+      const player = { x: 0, y: 1.65, z: 7, yaw: Math.PI, pitch: 0, speed: 3.2 };
+      const keys = new Set();
+      let selected = "grass";
+      let running = false;
+      let collecting = false;
+      let lastFrame = 0;
+      let animation;
+
+      function keyFor(x, y, z) { return `${x},${y},${z}`; }
+      function setBlock(x, y, z, type) { world.set(keyFor(x, y, z), { x, y, z, type }); }
+      function getBlock(x, y, z) { return world.get(keyFor(x, y, z)); }
+      function removeBlock(x, y, z) { return world.delete(keyFor(x, y, z)); }
+
+      function buildWorld() {
+        dugGround.clear();
+        for (let x = -10; x <= 10; x += 1) {
+          for (let z = -4; z <= 14; z += 1) setBlock(x, 0, z, "grass");
+        }
+        for (let x = -7; x <= -4; x += 1) {
+          for (let z = 0; z <= 3; z += 1) setBlock(x, 1, z, "stone");
+        }
+        for (let x = 4; x <= 6; x += 1) {
+          for (let z = 1; z <= 3; z += 1) setBlock(x, 1, z, "wood");
+        }
+        [[-7, 4], [-6, 4], [6, 5], [7, 5], [-2, 10], [3, 12]].forEach(([x, z]) => {
+          setBlock(x, 1, z, "wood");
+          setBlock(x, 2, z, "wood");
+          setBlock(x, 3, z, "grass");
+        });
+      }
+
+      function updateHud() {
+        selectedLabel.textContent = blockTypes[selected].name;
+        inventoryLabel.textContent = `Grass ${inventory.grass} · Stone ${inventory.stone} · Wood ${inventory.wood}`;
+        positionLabel.textContent = `${Math.round(player.x)}, 1, ${Math.round(player.z)}`;
+      }
+
+      function project(x, y, z) {
+        const dx = x - player.x;
+        const dz = z - player.z;
+        const sin = Math.sin(player.yaw);
+        const cos = Math.cos(player.yaw);
+        const forward = dx * sin + dz * cos;
+        const side = dx * cos - dz * sin;
+        const focal = canvas.width * .72;
+        if (forward <= .18) return null;
+        return { x: canvas.width / 2 + side * focal / forward, y: canvas.height * .52 + (player.y - y) * focal / forward + player.pitch * focal, size: focal / forward, forward };
+      }
+
+      function polygon(points, color) {
+        ctx.beginPath();
+        points.forEach((point, index) => index ? ctx.lineTo(point.x, point.y) : ctx.moveTo(point.x, point.y));
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.strokeStyle = "#18233155";
+        ctx.stroke();
+      }
+
+      function drawBlock(block) {
+        const center = project(block.x, block.y + .5, block.z);
+        if (!center) return;
+        const style = blockTypes[block.type];
+        const size = Math.max(5, Math.min(150, center.size * .72));
+        const depth = Math.max(2, size * .16);
+        const left = center.x - size / 2;
+        const top = center.y - size / 2;
+        ctx.fillStyle = "#18233144";
+        ctx.fillRect(left + depth, top + depth, size, size);
+        ctx.fillStyle = style.top;
+        ctx.fillRect(left, top, size, depth);
+        ctx.fillStyle = style.side;
+        ctx.fillRect(left, top + depth, depth, size - depth);
+        ctx.fillStyle = style.color;
+        ctx.fillRect(left + depth, top + depth, size - depth, size - depth);
+        ctx.strokeStyle = "#18233188";
+        ctx.strokeRect(left, top, size, size);
+      }
+
+      function drawWorld() {
+        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height * .62);
+        sky.addColorStop(0, "#75c9ed");
+        sky.addColorStop(1, "#d4f1ff");
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#7bb05d";
+        ctx.fillRect(0, canvas.height * .52, canvas.width, canvas.height * .48);
+        [...dugGround].forEach(value => {
+          const [x, z] = value.split(",").map(Number);
+          const hole = project(x, .02, z);
+          if (!hole) return;
+          const size = Math.max(5, Math.min(150, hole.size * .72));
+          ctx.fillStyle = "#182331";
+          ctx.fillRect(hole.x - size / 2, hole.y - size / 2, size, size);
+        });
+        const visible = [...world.values()].filter(block => {
+          const dx = block.x - player.x;
+          const dz = block.z - player.z;
+          return block.y > 0 && dx * dx + dz * dz < 250;
+        }).sort((a, b) => {
+          const pa = project(a.x, a.y, a.z);
+          const pb = project(b.x, b.y, b.z);
+          return (pb?.forward || 0) - (pa?.forward || 0);
+        });
+        visible.forEach(drawBlock);
+        ctx.strokeStyle = "#ffffffcc";
+        ctx.beginPath();
+        ctx.moveTo(canvas.width / 2 - 11, canvas.height / 2);
+        ctx.lineTo(canvas.width / 2 + 11, canvas.height / 2);
+        ctx.moveTo(canvas.width / 2, canvas.height / 2 - 11);
+        ctx.lineTo(canvas.width / 2, canvas.height / 2 + 11);
+        ctx.stroke();
+      }
+
+      function forwardCell(distance) {
+        const x = Math.round(player.x + Math.sin(player.yaw) * distance);
+        const z = Math.round(player.z + Math.cos(player.yaw) * distance);
+        return { x, y: 1, z };
+      }
+
+      function collectBlock() {
+        if (!running) return;
+        for (let distance = 1; distance <= 3; distance += 1) {
+          const cell = forwardCell(distance);
+          const block = getBlock(cell.x, cell.y, cell.z) || getBlock(cell.x, 0, cell.z);
+          if (block) {
+            removeBlock(block.x, block.y, block.z);
+            if (block.y === 0) {
+              dugGround.add(`${block.x},${block.z}`);
+              inventory.grass += 1;
+              status.textContent = "You dug into the ground and collected Grass.";
+            } else {
+              inventory[block.type] += 1;
+              status.textContent = `Collected ${blockTypes[block.type].name}. Hold Down to collect again.`;
+            }
+            updateHud();
+            return;
+          }
+        }
+        status.textContent = "There is no block to collect in front of you.";
+      }
+
+      function placeBlock() {
+        if (!running || inventory[selected] <= 0) return;
+        const cell = forwardCell(2);
+        if (getBlock(cell.x, 1, cell.z)) {
+          status.textContent = "That space is occupied.";
+          return;
+        }
+        setBlock(cell.x, 1, cell.z, selected);
+        inventory[selected] -= 1;
+        status.textContent = `Placed ${blockTypes[selected].name}.`;
+        updateHud();
+      }
+
+      function move(dt) {
+        const forward = (keys.has("w") ? 1 : 0) - (keys.has("s") ? 1 : 0);
+        const strafe = (keys.has("d") ? 1 : 0) - (keys.has("a") ? 1 : 0);
+        const speed = player.speed * dt;
+        const nextX = player.x + (Math.sin(player.yaw) * forward + Math.cos(player.yaw) * strafe) * speed;
+        const nextZ = player.z + (Math.cos(player.yaw) * forward - Math.sin(player.yaw) * strafe) * speed;
+        if (!getBlock(Math.round(nextX), 1, Math.round(player.z)) && !dugGround.has(`${Math.round(nextX)},${Math.round(player.z)}`)) player.x = Math.max(-9, Math.min(9, nextX));
+        if (!getBlock(Math.round(player.x), 1, Math.round(nextZ)) && !dugGround.has(`${Math.round(player.x)},${Math.round(nextZ)}`)) player.z = Math.max(-3, Math.min(13, nextZ));
+      }
+
+      function frame(time) {
+        if (!running) return;
+        const dt = Math.min((time - lastFrame) / 1000, .05);
+        lastFrame = time;
+        move(dt);
+        if (collecting) collectBlock();
+        updateHud();
+        drawWorld();
+        animation = requestAnimationFrame(frame);
+      }
+
+      function startGame() {
+        world.clear();
+        buildWorld();
+        player.x = 0; player.z = 7; player.yaw = Math.PI; player.pitch = 0;
+        inventory.grass = 12; inventory.stone = 8; inventory.wood = 6;
+        running = true;
+        start.textContent = "Restart world";
+        status.textContent = "Explore the world. Hold Down to collect and press Space to build.";
+        updateHud();
+        lastFrame = performance.now();
+        animation = requestAnimationFrame(frame);
+      }
+
+      start.addEventListener("click", startGame);
+      canvas.addEventListener("click", () => {
+        if (running && document.pointerLockElement !== canvas) canvas.requestPointerLock();
+      });
+      document.addEventListener("mousemove", event => {
+        if (!running || document.pointerLockElement !== canvas) return;
+        player.yaw += event.movementX * .0025;
+        player.pitch = Math.max(-.75, Math.min(.75, player.pitch - event.movementY * .0025));
+      });
+      document.addEventListener("keydown", event => {
+        const key = event.key.toLowerCase();
+        if (["w", "a", "s", "d", "arrowleft", "arrowright", "arrowdown"].includes(key)) {
+          event.preventDefault();
+          keys.add(key);
+          if (key === "arrowdown" && !collecting) { collecting = true; collectBlock(); }
+        }
+        if (event.code === "Space") { event.preventDefault(); placeBlock(); }
+        if (["1", "2", "3"].includes(event.key)) {
+          selected = { "1": "grass", "2": "stone", "3": "wood" }[event.key];
+          updateHud();
+        }
+      });
+      document.addEventListener("keyup", event => {
+        const key = event.key.toLowerCase();
+        keys.delete(key);
+        if (key === "arrowdown") collecting = false;
+      });
+      buildWorld();
+      player.x = 0; player.z = 7; player.yaw = Math.PI; player.pitch = 0;
+      updateHud();
+      drawWorld();
+    </script>
+  </body>
+</html>

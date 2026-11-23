@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>4D Hyper Hunt | My Online Game</title>
+    <style>
+      :root { color-scheme:dark; font-family:Arial,sans-serif; --ink:#f8fbff; --muted:#c5d5ef; --cyan:#63e6ff; --pink:#ff7fca; }
+      * { box-sizing:border-box; }
+      body { background:radial-gradient(circle at top,#45358a,#10172b 72%); color:var(--ink); margin:0; min-height:100vh; }
+      main { margin:auto; max-width:760px; padding:24px 16px 44px; text-align:center; }
+      a { color:#ffcf3f; }
+      h1 { font-size:clamp(2.6rem,9vw,5rem); letter-spacing:-.08em; margin:14px 0 5px; }
+      .tagline { color:var(--muted); line-height:1.5; margin:0 auto 20px; }
+      .panel { background:#151c3be8; border:1px solid #ffffff35; border-radius:20px; box-shadow:0 20px 50px #0006; padding:20px; }
+      .hud { display:flex; flex-wrap:wrap; gap:12px; justify-content:space-around; margin-bottom:15px; }
+      .stat { color:var(--muted); font-size:.78rem; font-weight:bold; text-transform:uppercase; }
+      .stat strong { color:var(--ink); display:block; font-size:1.4rem; margin-top:3px; }
+      #dimensions { color:var(--cyan); font-family:monospace; font-size:1.05rem; margin:8px 0 14px; }
+      #hypercube { background:linear-gradient(135deg,#192b58,#261b4d); border:2px solid #718ed5; border-radius:16px; display:grid; gap:7px; grid-template-columns:repeat(4,1fr); margin:auto; max-width:480px; padding:12px; }
+      .cell { align-items:center; aspect-ratio:1; background:#263c67; border:1px solid #ffffff20; border-radius:9px; display:flex; font-size:clamp(1.7rem,8vw,3rem); justify-content:center; transition:background .15s, transform .15s; }
+      .cell.player { background:#164f6c; box-shadow:inset 0 0 0 3px var(--cyan); transform:scale(.94); }
+      .cell.target { background:#633b6c; box-shadow:0 0 18px #ff7fca99; }
+      .controls { color:var(--muted); line-height:1.6; margin:16px auto; max-width:590px; }
+      kbd { background:#0b1428; border:1px solid #7086b8; border-radius:5px; color:#fff; padding:2px 6px; }
+      button { background:#ffcf3f; border:0; border-radius:10px; color:#17203b; cursor:pointer; font:inherit; font-weight:bold; padding:11px 18px; }
+      button:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+      .dimension-controls { display:flex; flex-wrap:wrap; gap:9px; justify-content:center; margin:14px auto 0; }
+      .dimension-controls button { background:#63e6ff; min-width:122px; }
+      #status { color:var(--muted); min-height:1.5em; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a href="index.html">← Back to games</a>
+      <h1>4D Hyper Hunt</h1>
+      <p class="tagline">Hunt energy through a four-dimensional hypercube. The board shows X/Y; switch Z/W to reveal hidden layers.</p>
+      <section class="panel" aria-label="4D Hyper Hunt game">
+        <button id="start" type="button">Start hunt</button>
+        <div class="hud">
+          <div class="stat">Energy<strong id="score">0</strong></div>
+          <div class="stat">Best<strong id="best">0</strong></div>
+          <div class="stat">Time<strong id="time">45</strong></div>
+        </div>
+        <div id="dimensions" aria-live="polite">X 0 · Y 0 · Z 0 · W 0</div>
+        <div id="hypercube" aria-label="Current four by four slice of the hypercube"></div>
+        <p id="status" role="status">Press Start hunt to enter the fourth dimension.</p>
+        <p class="controls"><kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> move in X/Y · <kbd>Q</kbd>/<kbd>E</kbd> shift Z · <kbd>Z</kbd>/<kbd>X</kbd> shift W</p>
+        <div class="dimension-controls">
+          <button id="z-down" type="button">Z −</button>
+          <button id="z-up" type="button">Z +</button>
+          <button id="w-down" type="button">W −</button>
+          <button id="w-up" type="button">W +</button>
+        </div>
+      </section>
+    </main>
+    <script>
+      const SIZE = 4;
+      const start = document.querySelector("#start");
+      const board = document.querySelector("#hypercube");
+      const scoreElement = document.querySelector("#score");
+      const bestElement = document.querySelector("#best");
+      const timeElement = document.querySelector("#time");
+      const dimensions = document.querySelector("#dimensions");
+      const status = document.querySelector("#status");
+      const bestKey = "4d-hyper-hunt-best";
+      let player;
+      let target;
+      let score = 0;
+      let timeLeft = 45;
+      let running = false;
+      let timer;
+
+      bestElement.textContent = localStorage.getItem(bestKey) || "0";
+
+      function randomPoint() {
+        return { x: Math.floor(Math.random() * SIZE), y: Math.floor(Math.random() * SIZE), z: Math.floor(Math.random() * SIZE), w: Math.floor(Math.random() * SIZE) };
+      }
+
+      function samePoint(first, second) {
+        return first.x === second.x && first.y === second.y && first.z === second.z && first.w === second.w;
+      }
+
+      function draw() {
+        dimensions.textContent = `X ${player.x} · Y ${player.y} · Z ${player.z} · W ${player.w}`;
+        board.innerHTML = "";
+        for (let y = SIZE - 1; y >= 0; y -= 1) {
+          for (let x = 0; x < SIZE; x += 1) {
+            const cell = document.createElement("div");
+            cell.className = "cell";
+            if (player.x === x && player.y === y) {
+              cell.classList.add("player");
+              cell.textContent = "🚀";
+            } else if (target.x === x && target.y === y && target.z === player.z && target.w === player.w) {
+              cell.classList.add("target");
+              cell.textContent = "✦";
+            } else {
+              cell.textContent = "·";
+            }
+            board.append(cell);
+          }
+        }
+      }
+
+      function nextTarget() {
+        do { target = randomPoint(); } while (samePoint(target, player));
+      }
+
+      function finish() {
+        running = false;
+        clearInterval(timer);
+        const best = Math.max(score, Number(localStorage.getItem(bestKey) || 0));
+        localStorage.setItem(bestKey, String(best));
+        bestElement.textContent = String(best);
+        start.textContent = "Play again";
+        status.textContent = `Hyper Hunt complete! You collected ${score} energy.`;
+      }
+
+      function collectIfReady() {
+        if (!samePoint(player, target)) return;
+        score += 1;
+        scoreElement.textContent = String(score);
+        timeLeft = Math.min(45, timeLeft + 2);
+        status.textContent = "Energy collected! The next signal is somewhere in 4D.";
+        nextTarget();
+      }
+
+      function move(axis, amount) {
+        if (!running) return;
+        player[axis] = Math.max(0, Math.min(SIZE - 1, player[axis] + amount));
+        collectIfReady();
+        draw();
+      }
+
+      function startGame() {
+        clearInterval(timer);
+        player = { x: 0, y: 0, z: 0, w: 0 };
+        target = randomPoint();
+        while (samePoint(player, target)) target = randomPoint();
+        score = 0;
+        timeLeft = 45;
+        running = true;
+        scoreElement.textContent = "0";
+        timeElement.textContent = "45";
+        start.textContent = "Restart hunt";
+        status.textContent = "Find the glowing signal. Check every Z/W layer!";
+        draw();
+        timer = setInterval(() => {
+          timeLeft -= 1;
+          timeElement.textContent = String(timeLeft);
+          if (timeLeft <= 0) finish();
+        }, 1000);
+      }
+
+      start.addEventListener("click", startGame);
+      document.addEventListener("keydown", event => {
+        if (!running) return;
+        const moves = { ArrowUp: ["y", 1], ArrowDown: ["y", -1], ArrowLeft: ["x", -1], ArrowRight: ["x", 1], q: ["z", -1], e: ["z", 1], z: ["w", -1], x: ["w", 1] };
+        const moveData = moves[event.key] || moves[event.key.toLowerCase()];
+        if (moveData) {
+          event.preventDefault();
+          move(moveData[0], moveData[1]);
+        }
+      });
+      document.querySelector("#z-down").addEventListener("click", () => move("z", -1));
+      document.querySelector("#z-up").addEventListener("click", () => move("z", 1));
+      document.querySelector("#w-down").addEventListener("click", () => move("w", -1));
+      document.querySelector("#w-up").addEventListener("click", () => move("w", 1));
+      player = { x: 0, y: 0, z: 0, w: 0 };
+      target = { x: 2, y: 2, z: 1, w: 3 };
+      draw();
+    </script>
+  </body>
+</html>
