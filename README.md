@@ -17,3 +17,4 @@ A gateway to browser games.
 - [Skyline Builder](skyline-builder.html)
 - [Magnet Mayhem](magnet-mayhem.html)
 - [Coin Caper](coin-caper.html)
+- [Game Lounge](game-lounge.html)

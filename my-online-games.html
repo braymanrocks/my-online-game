@@ -130,6 +130,10 @@
           <h2>Coin Caper</h2>
           <p>Catch treasure, earn coins, and buy upgrades that make your next run easier.</p>
         </a>
+        <a class="game-card" href="game-lounge.html">
+          <h2>Game Lounge</h2>
+          <p>Watch rotating game showcases, earn coins, and collect stylish backgrounds.</p>
+        </a>
         <a class="game-card" href="alexander-miles.html">
           <h2>Alexander Miles</h2>
           <p>Open the elevator doors and explore the inventor's story.</p>
@@ -184,5 +188,23 @@
         </a>
       </section>
     </main>
+    <script>
+      const savedBackground = localStorage.getItem("game-lounge-background");
+      const backgrounds = {
+        red: "#9e2635",
+        yellow: "#b88a16",
+        blue: "#2356a5",
+        sunset: "linear-gradient(135deg, #a63d66, #f29a4a 48%, #26153d)",
+        aurora: "radial-gradient(circle at 20% 10%, #4ce0c2, #182b67 42%, #130d2f 80%)",
+        galaxy: "radial-gradient(circle at 70% 15%, #f0a, #43228f 24%, #09051f 72%)",
+        ocean: "linear-gradient(160deg, #087e8b, #063b66 52%, #07172f)",
+        fire: "radial-gradient(circle at 50% 0, #ffcc55, #d3423e 35%, #260c2a 78%)",
+        candy: "linear-gradient(135deg, #f783ac, #a66cff 50%, #55d9e8)",
+        emerald: "radial-gradient(circle at 30% 0, #8fffa8, #146b62 42%, #071e2b 82%)",
+        cyber: "linear-gradient(135deg, #ff36c8, #381c91 45%, #05d9e8)",
+        rainbow: "linear-gradient(120deg, #ff6b6b, #ffd166, #06d6a0, #118ab2, #9b5de5)"
+      };
+      if (backgrounds[savedBackground]) document.body.style.background = backgrounds[savedBackground];
+    </script>
   </body>
 </html>
